@@ -1,0 +1,20 @@
+---
+- name: Configurar NFS Cliente
+  hosts: frontend1,frontend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Instalar cliente NFS
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Montar directorio NFS
+      mount:
+        path: "{{ directories.app }}"
+        src: "{{ ip.nfs_server }}:{{ directories.app }}"
+        fstype: nfs
+        opts: auto,nofail,noatime,nolock,intr,tcp,actimeo=1800
+        state: mounted

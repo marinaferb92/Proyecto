@@ -1,0 +1,50 @@
+---
+- name: Configurar HTTPS con Let's Encrypt
+  hosts: loadbalancer
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Instalar snapd
+      apt:
+        name: snapd
+        state: present
+
+    - name: Asegurarse de que snap está actualizado
+      command: snap install core
+      args:
+        creates: /snap/core/current
+
+    - name: Instalar Certbot con snap en modo clásico
+      snap:
+        name: certbot
+        classic: yes
+        state: present
+
+    - name: Crear alias de certbot
+      command: ln -s /snap/bin/certbot /usr/bin/certbot
+      args:
+        creates: /usr/bin/certbot
+
+    - name: Solicitar y configurar certificado SSL/TLS con Certbot
+      command: >
+        certbot --nginx
+        -m {{ certbot.email }}
+        --agree-tos
+        --no-eff-email
+        --non-interactive
+        -d {{ certbot.domain }}
+      register: certbot_result
+      ignore_errors: yes
+
+    - name: Mostrar resultado de Certbot
+      debug:
+        var: certbot_result

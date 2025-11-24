@@ -1,0 +1,43 @@
+---
+- name: Configurar Load Balancer
+  hosts: loadbalancer
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Instalar Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Deshabilitar virtualhost por defecto
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Copiar configuración de Nginx
+      copy:
+        src: ../templates/loadbalancer.conf
+        dest: /etc/nginx/sites-available/loadbalancer.conf
+
+    - name: Reemplazar IPs y dominio en Nginx
+      replace:
+        path: /etc/nginx/sites-available/loadbalancer.conf
+        regexp: "{{ item.regex }}"
+        replace: "{{ item.value }}"
+      loop:
+        - { regex: 'IP_FRONTEND_1', value: '{{ ip.frontend1 }}' }
+        - { regex: 'IP_FRONTEND_2', value: '{{ ip.frontend2 }}' }
+        - { regex: 'LE_DOMAIN', value: '{{ certbot.domain }}' }
+
+    - name: Habilitar sitio Nginx
+      file:
+        src: /etc/nginx/sites-available/loadbalancer.conf
+        dest: /etc/nginx/sites-enabled/loadbalancer.conf
+        state: link
+
+    - name: Reiniciar Nginx
+      systemd:
+        name: nginx
+        state: restarted

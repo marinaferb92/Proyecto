@@ -1,0 +1,57 @@
+# ------------------------
+# Variables de red
+# ------------------------
+ip:
+  frontend1: "10.0.2.124"
+  frontend2: "10.0.2.164"
+  backend1: "10.0.2.125"
+  backend2: "10.0.2.183"
+  loadbalancer: "10.0.1.61"
+  nfs_server: "10.0.2.225"
+
+network:
+  frontend: "10.0.2.0/24"
+
+# ------------------------
+# Directorios de la app
+# ------------------------
+directories:
+  app: "/var/www/html"
+
+# ------------------------
+# Certbot y dominio
+# ------------------------
+certbot:
+  email: "otrousuario@email.es"
+  domain: "miclinica.ddns.net"
+
+# ------------------------
+# Apache / Nginx
+# ------------------------
+apache:
+  service_name: apache2
+
+# ------------------------
+# MySQL
+# ------------------------
+db:
+  root_password: "RootClinica.123"
+  user: "clinica_user"
+  password: "PassClinica.123"
+  name: "clinica_db"
+
+# ------------------------
+# Variables de la app
+# ------------------------
+app:
+  name: "ClinicaEstetica"
+  owner: "www-data"
+  group: "www-data"
+  mode: "0755"
+
+# ------------------------
+# NFS
+# ------------------------
+nfs:
+  shared_dir: "{{ directories.app }}"
+  options: "rw,sync,no_root_squash"

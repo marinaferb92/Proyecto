@@ -1,0 +1,17 @@
+---
+- name: Desplegar app frontend
+  hosts: frontend1,frontend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Crear directorio de la app
+      file:
+        path: "{{ directories.app }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+

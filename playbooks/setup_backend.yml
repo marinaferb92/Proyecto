@@ -1,0 +1,29 @@
+---
+- name: Instalar LAMP Backend (MySQL)
+  hosts: backend1,backend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+
+    - name: Instalar MySQL y pymysql
+      apt:
+        name:
+          - mysql-server
+          - python3-pymysql
+        state: present
+
+    - name: Configurar MySQL para aceptar conexiones externas
+      replace:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address.*'
+        replace: 'bind-address = 0.0.0.0'
+
+    - name: Reiniciar MySQL
+      service:
+        name: mysql
+        state: restarted
