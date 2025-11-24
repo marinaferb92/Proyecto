@@ -1,1 +1,1 @@
-/var/www/html 10.0.2.0/24(rw,sync,no_root_squash,no_subtree_check)
+/var/www/html FRONTEND_NETWORK(rw,sync,no_subtree_check)

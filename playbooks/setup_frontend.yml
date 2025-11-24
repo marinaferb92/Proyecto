@@ -1,6 +1,6 @@
 ---
-- name: Instalar LAMP Backend (MySQL)
-  hosts: backend1,backend2
+- name: Configurar Frontend
+  hosts: "{{ frontend_hosts }}"
   become: yes
   vars_files:
     - ../vars/variables.yml
@@ -10,20 +10,65 @@
       apt:
         update_cache: yes
 
-    - name: Instalar MySQL y pymysql
+    - name: Instalar Apache y PHP
       apt:
         name:
-          - mysql-server
-          - python3-pymysql
+          - apache2
+          - php
+          - libapache2-mod-php
+          - php-mysql
         state: present
 
-    - name: Configurar MySQL para aceptar conexiones externas
-      replace:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^bind-address.*'
-        replace: 'bind-address = 0.0.0.0'
+    - name: Habilitar módulo rewrite de Apache
+      apache2_module:
+        name: rewrite
+        state: present
 
-    - name: Reiniciar MySQL
+    - name: Crear directorio web si no existe
+      file:
+        path: "{{ directories.web }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Crear directorio de la app si no existe
+      file:
+        path: "{{ directories.app }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Copiar config.php de la app
+      copy:
+        dest: "{{ directories.app }}/config.php"
+        content: |
+          <?php
+          $host = "{{ db.master }}";
+          $dbname = "{{ db.name }}";
+          $user = "{{ db.user }}";
+          $pass = "{{ db.password }}";
+
+          try {
+              $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
+              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+          } catch (PDOException $e) {
+              die("Error de conexión: " . $e->getMessage());
+          }
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Copiar index.php de la app
+      copy:
+        dest: "{{ directories.app }}/index.php"
+        src: ../templates/app_index.php
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Reiniciar Apache
       service:
-        name: mysql
+        name: apache2
         state: restarted

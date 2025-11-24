@@ -1,57 +1,32 @@
-# ------------------------
-# Variables de red
-# ------------------------
 ip:
   frontend1: "10.0.2.124"
   frontend2: "10.0.2.164"
-  backend1: "10.0.2.125"
-  backend2: "10.0.2.183"
-  loadbalancer: "10.0.1.61"
+  backend1: "10.0.2.125"   # Master
+  backend2: "10.0.2.183"   # Replica
   nfs_server: "10.0.2.225"
 
-network:
-  frontend: "10.0.2.0/24"
-
-# ------------------------
-# Directorios de la app
-# ------------------------
 directories:
-  app: "/var/www/html"
+  web: /var/www/html
+  app: /var/www/clinica_app
 
-# ------------------------
-# Certbot y dominio
-# ------------------------
-certbot:
-  email: "otrousuario@email.es"
-  domain: "miclinica.ddns.net"
-
-# ------------------------
-# Apache / Nginx
-# ------------------------
-apache:
-  service_name: apache2
-
-# ------------------------
-# MySQL
-# ------------------------
 db:
-  root_password: "RootClinica.123"
-  user: "clinica_user"
-  password: "PassClinica.123"
-  name: "clinica_db"
+  name: clinica_db
+  user: clinic_user
+  password: ClinicUser.123
+  root_password: RootClinica.123
+  repl_user: repl_user
+  repl_password: ReplPass123
+  master: 10.0.2.183
+  slaves:
+    - 10.0.2.125
 
-# ------------------------
-# Variables de la app
-# ------------------------
-app:
-  name: "ClinicaEstetica"
-  owner: "www-data"
-  group: "www-data"
-  mode: "0755"
+frontend_hosts:
+  - 10.0.2.124
+  - 10.0.2.164
 
-# ------------------------
-# NFS
-# ------------------------
-nfs:
-  shared_dir: "{{ directories.app }}"
-  options: "rw,sync,no_root_squash"
+network:
+  frontend: "10.0.2.0/16"
+
+certbot:
+  email: tu_email@ejemplo.com
+  domain: miclinica.ddns.net

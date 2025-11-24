@@ -1,0 +1,63 @@
+---
+- name: Desplegar backend MySQL y schema
+  hosts: backend1,backend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Actualizar sistema
+      apt:
+        update_cache: yes
+
+    - name: Instalar MySQL Server
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Asegurar que MySQL esté iniciado
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+
+    - name: Crear base de datos si no existe
+      mysql_db:
+        name: "{{ db.name }}"
+        state: present
+        login_user: root
+        login_password: "{{ db.root_password }}"
+
+    - name: Crear usuario para frontends si no existe
+      mysql_user:
+        name: "{{ db.user }}"
+        password: "{{ db.password }}"
+        priv: "{{ db.name }}.*:ALL"
+        host: "%"
+        state: present
+        login_user: root
+        login_password: "{{ db.root_password }}"
+
+    - name: Crear usuario de replicación si no existe
+      mysql_user:
+        name: "{{ db.repl_user }}"
+        password: "{{ db.repl_password }}"
+        priv: "*.*:REPLICATION SLAVE"
+        host: "%"
+        state: present
+        login_user: root
+        login_password: "{{ db.root_password }}"
+
+    - name: Copiar DB schema al backend
+      copy:
+        src: ../sql/db_schema.sql
+        dest: /tmp/db_schema.sql
+        mode: '0644'
+
+    - name: Importar schema de manera idempotente
+      mysql_db:
+        name: "{{ db.name }}"
+        state: import
+        target: /tmp/db_schema.sql
+        login_user: root
+        login_password: "{{ db.root_password }}"

@@ -1,30 +1,38 @@
----
-- name: Configurar NFS Servidor
+- name: Configurar NFS Server
   hosts: nfs_server
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar NFS Server
+    - name: Instalar NFS Server si no está
       apt:
         name: nfs-kernel-server
         state: present
 
     - name: Crear directorio compartido
       file:
-        path: "{{ directories.app }}"
+        path: "{{ directories.wordpress }}"
         state: directory
         owner: nobody
         group: nogroup
         mode: '0755'
 
-    - name: Copiar configuración de exports
+    - name: Configurar /etc/exports
       copy:
         src: ../nfs/exports
         dest: /etc/exports
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Reiniciar NFS Server
-      systemd:
+    - name: Reemplazar FRONTEND_NETWORK
+      replace:
+        path: /etc/exports
+        regexp: 'FRONTEND_NETWORK'
+        replace: '{{ network.frontend }}'
+
+    - name: Reiniciar NFS
+      service:
         name: nfs-kernel-server
         state: restarted

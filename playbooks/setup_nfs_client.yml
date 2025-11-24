@@ -1,4 +1,3 @@
----
 - name: Configurar NFS Cliente
   hosts: frontend1,frontend2
   become: yes
@@ -6,15 +5,15 @@
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar cliente NFS
+    - name: Instalar cliente NFS si no está
       apt:
         name: nfs-common
         state: present
 
-    - name: Montar directorio NFS
+    - name: Montar directorio NFS si no está montado
       mount:
-        path: "{{ directories.app }}"
-        src: "{{ ip.nfs_server }}:{{ directories.app }}"
+        path: "{{ directories.wordpress }}"
+        src: "{{ ip.nfs_server }}:{{ directories.wordpress }}"
         fstype: nfs
         opts: auto,nofail,noatime,nolock,intr,tcp,actimeo=1800
         state: mounted

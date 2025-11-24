@@ -1,6 +1,7 @@
 ---
 - import_playbook: playbooks/setup_backend.yml
-- import_playbook: playbooks/deploy_db_schema.yml
+- import_playbook: playbooks/deploy_backend.yml
+- import_playbook: playbooks/setup_replication.yml
 - import_playbook: playbooks/setup_frontend.yml
 - import_playbook: playbooks/deploy_app_frontend.yml
 - import_playbook: playbooks/setup_nfs_server.yml

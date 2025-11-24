@@ -1,5 +1,5 @@
 ---
-- name: Desplegar app frontend
+- name: Desplegar app PHP para la clínica en Frontends
   hosts: frontend1,frontend2
   become: yes
   vars_files:
@@ -14,4 +14,35 @@
         group: www-data
         mode: '0755'
 
+    - name: Crear archivo config.php
+      copy:
+        dest: "{{ directories.app }}/config.php"
+        content: |
+          <?php
+          $host = "{{ ip.backend1 }}";
+          $dbname = "{{ db.name }}";
+          $user = "{{ db.user }}";
+          $pass = "{{ db.password }}";
 
+          try {
+              $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
+              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+          } catch (PDOException $e) {
+              die("Error de conexión: " . $e->getMessage());
+          }
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Crear archivo index.php
+      copy:
+        src: ../templates/app_index.php
+        dest: "{{ directories.app }}/index.php"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Reiniciar Apache
+      service:
+        name: apache2
+        state: restarted

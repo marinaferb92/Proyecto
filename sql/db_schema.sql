@@ -5,7 +5,7 @@ USE clinica_db;
 -- ============================================
 -- TABLA: Clientes / Pacientes
 -- ============================================
-CREATE TABLE clientes (
+CREATE TABLE IF NOT EXISTS clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE clientes (
 -- ============================================
 -- TABLA: Categorías de Empleados
 -- ============================================
-CREATE TABLE categorias_empleados (
+CREATE TABLE IF NOT EXISTS categorias_empleados (
     categoria_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     descripcion VARCHAR(255)
@@ -28,7 +28,7 @@ CREATE TABLE categorias_empleados (
 -- ============================================
 -- TABLA: Empleados
 -- ============================================
-CREATE TABLE empleados (
+CREATE TABLE IF NOT EXISTS empleados (
     empleado_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE empleados (
 -- ============================================
 -- TABLA: Categorías de Tratamientos
 -- ============================================
-CREATE TABLE categorias_tratamientos (
+CREATE TABLE IF NOT EXISTS categorias_tratamientos (
     categoria_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     descripcion VARCHAR(255)
@@ -50,7 +50,7 @@ CREATE TABLE categorias_tratamientos (
 -- ============================================
 -- TABLA: Tratamientos
 -- ============================================
-CREATE TABLE tratamientos (
+CREATE TABLE IF NOT EXISTS tratamientos (
     tratamiento_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     descripcion VARCHAR(255),
@@ -63,7 +63,7 @@ CREATE TABLE tratamientos (
 -- ============================================
 -- TABLA: Fichas Médicas
 -- ============================================
-CREATE TABLE fichas_medicas (
+CREATE TABLE IF NOT EXISTS fichas_medicas (
     ficha_id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT,
     alergias TEXT,
@@ -74,7 +74,7 @@ CREATE TABLE fichas_medicas (
 -- ============================================
 -- TABLA: Citas
 -- ============================================
-CREATE TABLE citas (
+CREATE TABLE IF NOT EXISTS citas (
     cita_id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT,
     empleado_id INT,
@@ -91,7 +91,7 @@ CREATE TABLE citas (
 -- ============================================
 -- TABLA: Pagos
 -- ============================================
-CREATE TABLE pagos (
+CREATE TABLE IF NOT EXISTS pagos (
     pago_id INT AUTO_INCREMENT PRIMARY KEY,
     cita_id INT,
     metodo_pago ENUM('efectivo','tarjeta','transferencia'),
@@ -103,7 +103,7 @@ CREATE TABLE pagos (
 -- ============================================
 -- TABLA: Valoraciones
 -- ============================================
-CREATE TABLE valoraciones (
+CREATE TABLE IF NOT EXISTS valoraciones (
     valoracion_id INT AUTO_INCREMENT PRIMARY KEY,
     cita_id INT,
     puntuacion INT CHECK(puntuacion BETWEEN 1 AND 5),
@@ -115,7 +115,7 @@ CREATE TABLE valoraciones (
 -- ============================================
 -- TABLA: Tratamientos Previos (historial del cliente)
 -- ============================================
-CREATE TABLE tratamientos_previos (
+CREATE TABLE IF NOT EXISTS tratamientos_previos (
     cliente_id INT,
     tratamiento_id INT,
     fecha_tratamiento DATE,
@@ -127,7 +127,7 @@ CREATE TABLE tratamientos_previos (
 -- ============================================
 -- TABLA: Proveedores
 -- ============================================
-CREATE TABLE proveedores (
+CREATE TABLE IF NOT EXISTS proveedores (
     proveedor_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     telefono VARCHAR(20),
@@ -138,7 +138,7 @@ CREATE TABLE proveedores (
 -- ============================================
 -- TABLA: Inventario (productos/materiales)
 -- ============================================
-CREATE TABLE inventario (
+CREATE TABLE IF NOT EXISTS inventario (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     tipo ENUM('insumo','producto'),
@@ -152,7 +152,7 @@ CREATE TABLE inventario (
 -- ============================================
 -- TABLA: Consumo de Material en Citas
 -- ============================================
-CREATE TABLE consumo_material (
+CREATE TABLE IF NOT EXISTS consumo_material (
     cita_id INT,
     item_id INT,
     cantidad_usada DECIMAL(10,2),
