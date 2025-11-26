@@ -1,12 +1,12 @@
 ip:
   frontend1: "10.0.2.124"
   frontend2: "10.0.2.164"
-  backend1: "10.0.2.125"   # Master
-  backend2: "10.0.2.183"   # Replica
+  backend1: "10.0.2.125"
+  backend2: "10.0.2.183"
   nfs_server: "10.0.2.225"
 
 directories:
-  web: /var/www/html
+  web: /var/www/html/app
   app: /var/www/clinica_app
 
 db:

@@ -1,20 +1,16 @@
-[frontend1]
-10.0.2.124
+[frontend]
+frontend1 ansible_host=10.0.2.124
+frontend2 ansible_host=10.0.2.164
 
-[frontend2]
-10.0.2.164
-
-[backend1]
-10.0.2.125
-
-[backend2]
-10.0.2.183
+[backend]
+backend1 ansible_host=10.0.2.125
+backend2 ansible_host=10.0.2.183
 
 [loadbalancer]
-10.0.1.61
+lb1 ansible_host=10.0.1.61
 
-[nfs_server]
-10.0.2.225
+[nfs]
+nfs1 ansible_host=10.0.2.225
 
 [all:vars]
 ansible_user=ubuntu

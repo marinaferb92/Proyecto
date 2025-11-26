@@ -1,25 +1,54 @@
-- name: Configurar backend2 como esclavo
-  mysql_replication:
-    mode: stopreplica   # primero detenemos cualquier réplica activa
-    login_user: root
-    login_password: "{{ db.root_password }}"
-  delegate_to: backend2
+---
+# 1) OBTENER INFO DEL MASTER
+- name: Obtener estado del master MySQL
+  hosts: backend1
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
 
-- name: Configurar la replicación con master
-  mysql_replication:
-    mode: changeprimary
-    master_host: "{{ hostvars['backend1']['ansible_host'] }}"
-    master_user: "{{ db.repl_user }}"
-    master_password: "{{ db.repl_password }}"
-    master_log_file: "{{ replication.master_log_file }}"   # se obtiene de backend1
-    master_log_pos: "{{ replication.master_log_pos }}"     # idem
-    login_user: root
-    login_password: "{{ db.root_password }}"
-  delegate_to: backend2
+  tasks:
 
-- name: Iniciar la replicación
-  mysql_replication:
-    mode: startreplica
-    login_user: root
-    login_password: "{{ db.root_password }}"
-  delegate_to: backend2
+    - name: Obtener log y posición del master
+      mysql_replication:
+        mode: getprimary
+        login_user: root
+        login_password: "{{ db.root_password }}"
+      register: master_status
+
+    - name: Guardar datos del master
+      set_fact:
+        master_log_file: "{{ master_status.File }}"
+        master_log_pos: "{{ master_status.Position }}"
+
+# 2) CONFIGURAR REPLICA EN backend2
+- name: Configurar backend2 como réplica
+  hosts: backend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Detener réplica previa si existe
+      mysql_replication:
+        mode: stopreplica
+        login_user: root
+        login_password: "{{ db.root_password }}"
+      ignore_errors: yes
+
+    - name: Configurar nuevo master
+      mysql_replication:
+        mode: changeprimary
+        master_host: "{{ hostvars['backend1'].ansible_host }}"
+        master_user: "{{ db.repl_user }}"
+        master_password: "{{ db.repl_password }}"
+        master_log_file: "{{ hostvars['backend1'].master_log_file }}"
+        master_log_pos: "{{ hostvars['backend1'].master_log_pos }}"
+        login_user: root
+        login_password: "{{ db.root_password }}"
+
+    - name: Iniciar replicación
+      mysql_replication:
+        mode: startreplica
+        login_user: root
+        login_password: "{{ db.root_password }}"

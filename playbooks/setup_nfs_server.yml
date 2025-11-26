@@ -1,6 +1,8 @@
-- name: Configurar NFS Server
+---
+- name: Configurar NFS Servidor
   hosts: nfs_server
   become: yes
+  
   vars_files:
     - ../vars/variables.yml
 
@@ -12,7 +14,7 @@
 
     - name: Crear directorio compartido
       file:
-        path: "{{ directories.wordpress }}"
+        path: "{{ directories.web }}"
         state: directory
         owner: nobody
         group: nogroup
@@ -22,17 +24,14 @@
       copy:
         src: ../nfs/exports
         dest: /etc/exports
-        owner: root
-        group: root
-        mode: '0644'
 
-    - name: Reemplazar FRONTEND_NETWORK
+    - name: Reemplazar red frontend en /etc/exports
       replace:
         path: /etc/exports
         regexp: 'FRONTEND_NETWORK'
         replace: '{{ network.frontend }}'
 
-    - name: Reiniciar NFS
-      service:
+    - name: Reiniciar NFS Server
+      systemd:
         name: nfs-kernel-server
         state: restarted

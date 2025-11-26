@@ -1,16 +1,17 @@
 ---
 - name: Configurar Frontend
-  hosts: "{{ frontend_hosts }}"
+  hosts: frontend1,frontend2
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
+
     - name: Actualizar repositorios
       apt:
         update_cache: yes
 
-    - name: Instalar Apache y PHP
+    - name: Instalar Apache y PHP si no están
       apt:
         name:
           - apache2
@@ -28,44 +29,30 @@
       file:
         path: "{{ directories.web }}"
         state: directory
-        owner: www-data
-        group: www-data
         mode: '0755'
 
-    - name: Crear directorio de la app si no existe
-      file:
-        path: "{{ directories.app }}"
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
-
-    - name: Copiar config.php de la app
-      copy:
-        dest: "{{ directories.app }}/config.php"
-        content: |
-          <?php
-          $host = "{{ db.master }}";
-          $dbname = "{{ db.name }}";
-          $user = "{{ db.user }}";
-          $pass = "{{ db.password }}";
-
-          try {
-              $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
-              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-          } catch (PDOException $e) {
-              die("Error de conexión: " . $e->getMessage());
-          }
-        owner: www-data
-        group: www-data
+    - name: Copiar VirtualHost desde template
+      template:
+        src: ../templates/app.conf.j2
+        dest: /etc/apache2/sites-available/app.conf
         mode: '0644'
+
+    - name: Activar VirtualHost app.conf
+      file:
+        src: /etc/apache2/sites-available/app.conf
+        dest: /etc/apache2/sites-enabled/app.conf
+        state: link
+        force: yes
+
+    - name: Deshabilitar sitio por defecto
+      file:
+        path: /etc/apache2/sites-enabled/000-default.conf
+        state: absent
 
     - name: Copiar index.php de la app
       copy:
-        dest: "{{ directories.app }}/index.php"
         src: ../templates/app_index.php
-        owner: www-data
-        group: www-data
+        dest: "{{ directories.web }}/index.php"
         mode: '0644'
 
     - name: Reiniciar Apache
