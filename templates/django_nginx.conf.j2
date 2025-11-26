@@ -1,15 +1,14 @@
-upstream clinica_frontend {
-    server 10.0.2.124;
-    server 10.0.2.164;
-}
-
 server {
     listen 80;
     server_name {{ certbot.domain }};
 
     location / {
-        proxy_pass http://clinica_frontend;
+        proxy_pass http://unix:/var/www/clinica_app/gunicorn.sock;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /static/ {
+        alias /var/www/clinica_app/static/;
     }
 }

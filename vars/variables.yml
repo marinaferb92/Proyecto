@@ -1,14 +1,3 @@
-ip:
-  frontend1: "10.0.2.124"
-  frontend2: "10.0.2.164"
-  backend1: "10.0.2.125"
-  backend2: "10.0.2.183"
-  nfs_server: "10.0.2.225"
-
-directories:
-  web: /var/www/html/app
-  app: /var/www/clinica_app
-
 db:
   name: clinica_db
   user: clinic_user
@@ -20,13 +9,6 @@ db:
   slaves:
     - 10.0.2.125
 
-frontend_hosts:
-  - 10.0.2.124
-  - 10.0.2.164
-
-network:
-  frontend: "10.0.2.0/16"
-
 certbot:
-  email: tu_email@ejemplo.com
+  email: tuemail@ejemplo.com
   domain: miclinica.ddns.net

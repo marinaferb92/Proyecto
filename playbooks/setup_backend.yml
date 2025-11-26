@@ -1,6 +1,6 @@
 ---
-- name: Configurar Backend MySQL Master/Replica
-  hosts: backend1,backend2
+- name: Preparar servidores backend MySQL
+  hosts: backend
   become: yes
   vars_files:
     - ../vars/variables.yml
@@ -13,58 +13,47 @@
 
     - name: Instalar MySQL Server
       apt:
-        name: mysql-server
+        name:
+          - mysql-server
+          - python3-pymysql
         state: present
 
-    - name: Asegurar MySQL iniciado
+    - name: Asegurar que MySQL está iniciado
       service:
         name: mysql
         state: started
         enabled: yes
 
-# Configuración Master
-- name: Configurar Backend1 como Master
-  hosts: backend1
-  become: yes
-  vars_files:
-    - ../vars/variables.yml
-  tasks:
-    - name: Configurar bind-address
+    - name: Habilitar event_scheduler
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^event_scheduler'
+        line: 'event_scheduler = ON'
+
+    - name: Asegurar bind-address abierto
       lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
-
-    - name: Configurar server-id para master
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^server-id'
-        line: 'server-id = 1'
-
-    - name: Habilitar binary log
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^log_bin'
-        line: 'log_bin = /var/log/mysql/mysql-bin.log'
 
     - name: Reiniciar MySQL
       service:
         name: mysql
         state: restarted
 
-    - name: Crear base de datos
+    - name: Crear base de datos clínica
       mysql_db:
         name: "{{ db.name }}"
         state: present
         login_user: root
         login_password: "{{ db.root_password }}"
 
-    - name: Crear usuario de aplicación
+    - name: Crear usuario para frontends
       mysql_user:
         name: "{{ db.user }}"
         password: "{{ db.password }}"
-        priv: "{{ db.name }}.*:ALL"
         host: "%"
+        priv: "{{ db.name }}.*:ALL"
         state: present
         login_user: root
         login_password: "{{ db.root_password }}"
@@ -73,32 +62,9 @@
       mysql_user:
         name: "{{ db.repl_user }}"
         password: "{{ db.repl_password }}"
-        host: "{{ ip.backend2 }}"
+        host: "%"
         priv: "*.*:REPLICATION SLAVE"
         state: present
         login_user: root
         login_password: "{{ db.root_password }}"
 
-# Configuración Replica
-- name: Configurar Backend2 como Replica
-  hosts: backend2
-  become: yes
-  vars_files:
-    - ../vars/variables.yml
-  tasks:
-    - name: Configurar bind-address
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^bind-address'
-        line: 'bind-address = 0.0.0.0'
-
-    - name: Configurar server-id para replica
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^server-id'
-        line: 'server-id = 2'
-
-    - name: Reiniciar MySQL
-      service:
-        name: mysql
-        state: restarted

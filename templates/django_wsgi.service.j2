@@ -1,0 +1,12 @@
+[Unit]
+Description=Gunicorn service for Clinica Django App
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/clinica_app
+ExecStart=/var/www/clinica_app/venv/bin/gunicorn --workers 3 --bind unix:/var/www/clinica_app/gunicorn.sock clinica.wsgi:application
+
+[Install]
+WantedBy=multi-user.target

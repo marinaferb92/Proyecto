@@ -22,12 +22,14 @@
         state: directory
         mode: '0755'
 
-    - name: Asegurar que no está montado previamente
+    # En vez de 'absent' (que intenta borrar el directorio), usamos 'unmounted'
+    - name: Asegurar que no está montado previamente (solo desmontar)
       mount:
         path: "{{ directories.web }}"
-        state: absent
+        state: unmounted
+      ignore_errors: yes  # por si no estaba montado, que no falle
 
-    - name: Montar directorio NFS si no está montado
+    - name: Montar directorio NFS (idempotente)
       mount:
         path: "{{ directories.web }}"
         src: "{{ ip.nfs_server }}:{{ directories.web }}"

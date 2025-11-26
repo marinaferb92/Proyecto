@@ -1,6 +1,6 @@
 ---
-- name: Configurar load balancer para Django
-  hosts: loadbalancer
+- name: Desplegar configuración de Nginx para Django
+  hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
@@ -11,19 +11,19 @@
         name: nginx
         state: present
 
-    - name: Copiar config del balanceador
+    - name: Copiar configuración nginx
       template:
-        src: ../templates/loadbalancer.conf.j2
-        dest: /etc/nginx/sites-available/loadbalancer.conf
+        src: ../templates/django_nginx.conf.j2
+        dest: /etc/nginx/sites-available/clinica.conf
 
-    - name: Activar config
+    - name: Activar config nginx
       file:
-        src: /etc/nginx/sites-available/loadbalancer.conf
-        dest: /etc/nginx/sites-enabled/loadbalancer.conf
+        src: /etc/nginx/sites-available/clinica.conf
+        dest: /etc/nginx/sites-enabled/clinica.conf
         state: link
         force: yes
 
-    - name: Eliminar default
+    - name: Eliminar default nginx
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent

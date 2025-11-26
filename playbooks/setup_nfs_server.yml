@@ -2,7 +2,7 @@
 - name: Configurar NFS Servidor
   hosts: nfs_server
   become: yes
-  
+
   vars_files:
     - ../vars/variables.yml
 
@@ -11,6 +11,7 @@
       apt:
         name: nfs-kernel-server
         state: present
+        update_cache: yes
 
     - name: Crear directorio compartido
       file:
@@ -20,16 +21,20 @@
         group: nogroup
         mode: '0755'
 
-    - name: Configurar /etc/exports
+    - name: Copiar /etc/exports base
       copy:
         src: ../nfs/exports
         dest: /etc/exports
+        mode: '0644'
 
     - name: Reemplazar red frontend en /etc/exports
       replace:
         path: /etc/exports
         regexp: 'FRONTEND_NETWORK'
         replace: '{{ network.frontend }}'
+
+    - name: Recargar exportaciones NFS
+      command: exportfs -ra
 
     - name: Reiniciar NFS Server
       systemd:
