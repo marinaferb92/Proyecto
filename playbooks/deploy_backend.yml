@@ -15,6 +15,11 @@
         src: "../sql/clinica_estructura.sql"
         dest: "/tmp/sql_clinica/clinica_estructura.sql"
 
+    - name: Copiar datos base SQL al backend
+      copy:
+        src: "../sql/clinica_datos_base.sql"
+        dest: "/tmp/sql_clinica/clinica_datos_base.sql"
+
     - name: Copiar datos demo SQL al backend
       copy:
         src: "../sql/clinica_datos_demo.sql"
@@ -24,6 +29,10 @@
       command: >
         bash -c "mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_estructura.sql"
 
-    - name: Importar datos demo
+    - name: Importar datos base
+      command: >
+        bash -c "mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_datos_base.sql"
+
+    - name: Importar datos demo (procedimiento)
       command: >
         bash -c "mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_datos_demo.sql"

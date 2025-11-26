@@ -1,6 +1,5 @@
 -- ============================================================
 -- ESTRUCTURA COMPLETA DE LA BASE DE DATOS - CLÍNICA ESTÉTICA
--- COMPATIBLE CON MYSQL 5.7 / 8.0
 -- ============================================================
 
 DROP DATABASE IF EXISTS clinica_db;
@@ -37,7 +36,7 @@ DROP TABLE IF EXISTS Clientes;
 DROP TABLE IF EXISTS EstadisticasDiarias;
 
 -- ---------------------------------------------
--- CLIENTES (CORREGIDO: sin DEFAULT CURRENT_DATE)
+-- CLIENTES
 -- ---------------------------------------------
 CREATE TABLE Clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -308,18 +307,23 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =============================================
 -- ÍNDICES
 -- =============================================
+
 CREATE INDEX idx_citas_cliente ON Citas(cliente_id);
 CREATE INDEX idx_citas_empleado ON Citas(empleado_id);
 CREATE INDEX idx_citas_fecha ON Citas(fecha_cita);
+
 CREATE INDEX idx_pagos_fecha ON Pagos(fecha_pago);
 CREATE INDEX idx_mov_inv_fecha ON MovimientosInventario(fecha_movimiento);
+
 CREATE INDEX idx_inventario_tipo ON Inventario(tipo);
+
 CREATE INDEX idx_trat_prev_cli ON TratamientosPrevios(cliente_id);
 CREATE INDEX idx_trat_prev_fecha ON TratamientosPrevios(fecha_tratamiento);
 
 -- =============================================
 -- FUNCIÓN
 -- =============================================
+
 DELIMITER $$
 
 CREATE FUNCTION fn_calcular_edad(fecha_nacimiento DATE)
@@ -337,7 +341,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- TRIGGERS SEGUROS (NO RECURSIVOS)
+-- TRIGGERS (con @TRIGGER_DISABLED)
 -- =============================================
 
 DELIMITER $$
@@ -415,6 +419,7 @@ DELIMITER ;
 -- =============================================
 -- PROCEDIMIENTO ESTADÍSTICAS
 -- =============================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_calcular_estadisticas_dia(IN p_fecha DATE)
@@ -444,7 +449,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- VISTAS BI
+-- VISTAS
 -- =============================================
 
 CREATE OR REPLACE VIEW vw_ingresos_mensuales AS
@@ -484,6 +489,7 @@ GROUP BY e.empleado_id, e.nombre, e.apellido;
 -- =============================================
 -- EVENTOS
 -- =============================================
+
 SET GLOBAL event_scheduler = ON;
 
 DELIMITER $$
@@ -504,4 +510,3 @@ BEGIN
 END$$
 
 DELIMITER ;
-
