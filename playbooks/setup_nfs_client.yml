@@ -1,38 +1,27 @@
----
-- name: Configurar NFS Cliente
-  hosts: frontend1,frontend2
+- hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-
-    - name: Actualizar repositorios
-      apt:
-        update_cache: yes
-
     - name: Instalar cliente NFS
       apt:
         name: nfs-common
         state: present
+        update_cache: yes
 
-    - name: Crear directorio local si no existe
+    - name: Crear carpeta de montaje para media
       file:
-        path: "{{ directories.web }}"
+        path: /var/www/clinica_media
         state: directory
-        mode: '0755'
+        owner: www-data
+        group: www-data
+        mode: "0775"
 
-    # En vez de 'absent' (que intenta borrar el directorio), usamos 'unmounted'
-    - name: Asegurar que no está montado previamente (solo desmontar)
+    - name: Configurar montaje NFS en fstab
       mount:
-        path: "{{ directories.web }}"
-        state: unmounted
-      ignore_errors: yes  # por si no estaba montado, que no falle
-
-    - name: Montar directorio NFS (idempotente)
-      mount:
-        path: "{{ directories.web }}"
-        src: "{{ ip.nfs_server }}:{{ directories.web }}"
+        src: "{{ nfs_server }}:/var/www/clinica_media"
+        path: /var/www/clinica_media
         fstype: nfs
-        opts: rw,sync,hard,intr
+        opts: rw
         state: mounted

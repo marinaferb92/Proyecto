@@ -41,6 +41,14 @@
         chdir: /var/www/clinica_app
         creates: /var/www/clinica_app/core
 
+    - name: Crear carpeta para templates
+      file:
+        path: /var/www/clinica_app/templates
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
     - name: Copiar settings.py
       template:
         src: django_settings.py.j2
@@ -56,11 +64,3 @@
         owner: www-data
         group: www-data
         mode: "0644"
-
-    - name: Asegurar que la app 'core' está en INSTALLED_APPS
-      lineinfile:
-        path: /var/www/clinica_app/clinica/settings.py
-        regexp: "INSTALLED_APPS = \\["
-        line: "INSTALLED_APPS = [\n    'core',"
-        insertafter: "INSTALLED_APPS = \\["
-      when: false  # solo por si quisieras automatizarlo; lo tienes ya en la plantilla

@@ -3,12 +3,11 @@ db:
   user: clinic_user
   password: ClinicUser.123
   root_password: RootClinica.123
+
+  # NUEVO - necesario para replicación
   repl_user: repl_user
   repl_password: ReplPass123
+
   master: 10.0.2.183
   slaves:
     - 10.0.2.125
-
-certbot:
-  email: tuemail@ejemplo.com
-  domain: miclinica.ddns.net

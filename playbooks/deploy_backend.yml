@@ -1,33 +1,29 @@
----
-- name: Desplegar estructura BD clínica
-  hosts: backend1
+- hosts: backend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Copiar estructura clínica
+    - name: Crear carpeta temporal para SQL
+      file:
+        path: /tmp/sql_clinica
+        state: directory
+        mode: "0755"
+
+    - name: Copiar estructura SQL al backend
       copy:
-        src: ../sql/clinica_estructura.sql
-        dest: /tmp/clinica_estructura.sql
+        src: "../sql/clinica_estructura.sql"
+        dest: "/tmp/sql_clinica/clinica_estructura.sql"
+
+    - name: Copiar datos demo SQL al backend
+      copy:
+        src: "../sql/clinica_datos_demo.sql"
+        dest: "/tmp/sql_clinica/clinica_datos_demo.sql"
 
     - name: Importar estructura clínica
-      mysql_db:
-        name: "{{ db.name }}"
-        state: import
-        target: /tmp/clinica_estructura.sql
-        login_user: root
-        login_password: "{{ db.root_password }}"
+      command: >
+        bash -c "mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_estructura.sql"
 
-    - name: Copiar generador de datos
-      copy:
-        src: ../sql/clinica_datos_demo.sql
-        dest: /tmp/clinica_datos_demo.sql
-
-    - name: Ejecutar datos demo
-      mysql_db:
-        name: "{{ db.name }}"
-        state: import
-        target: /tmp/clinica_datos_demo.sql
-        login_user: root
-        login_password: "{{ db.root_password }}"
+    - name: Importar datos demo
+      command: >
+        bash -c "mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_datos_demo.sql"
