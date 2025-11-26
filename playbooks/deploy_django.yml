@@ -1,34 +1,49 @@
----
-- name: Desplegar configuración de Nginx para Django
-  hosts: frontend
+- hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar nginx
-      apt:
-        name: nginx
-        state: present
-
-    - name: Copiar configuración nginx
+    - name: Copiar servicio de Gunicorn
       template:
-        src: ../templates/django_nginx.conf.j2
-        dest: /etc/nginx/sites-available/clinica.conf
+        src: django_gunicorn.service.j2
+        dest: /etc/systemd/system/django_clinica.service
+        mode: "0644"
 
-    - name: Activar config nginx
+    - name: Recargar systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Iniciar y habilitar servicio Gunicorn
+      systemd:
+        name: django_clinica.service
+        state: started
+        enabled: yes
+
+    - name: Recoger estáticos de Django
+      command: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
+      args:
+        chdir: /var/www/clinica_app
+
+    - name: Copiar configuración Nginx para Django
+      template:
+        src: django_nginx.conf.j2
+        dest: /etc/nginx/sites-available/clinica.conf
+        mode: "0644"
+
+    - name: Activar sitio Nginx
       file:
         src: /etc/nginx/sites-available/clinica.conf
         dest: /etc/nginx/sites-enabled/clinica.conf
         state: link
         force: yes
 
-    - name: Eliminar default nginx
+    - name: Eliminar sitio por defecto Nginx
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Reiniciar nginx
-      systemd:
+    - name: Reiniciar Nginx
+      service:
         name: nginx
         state: restarted

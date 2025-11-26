@@ -4,6 +4,13 @@ DELIMITER $$
 
 CREATE PROCEDURE sp_generar_datos_demo_grande()
 BEGIN
+    -- 🔴 DESACTIVAR TRIGGERS Y CHECKS
+    SET @OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS;
+    SET @OLD_UNIQUE_CHECKS = @@UNIQUE_CHECKS;
+    SET FOREIGN_KEY_CHECKS = 0;
+    SET UNIQUE_CHECKS = 0;
+    SET @TRIGGER_DISABLED = TRUE;
+
     DECLARE i INT DEFAULT 1;
     DECLARE max_clientes INT DEFAULT 1000;
     DECLARE max_empleados INT DEFAULT 10;
@@ -71,20 +78,11 @@ BEGIN
             DATE_SUB(CURDATE(), INTERVAL (30 + i) DAY),
             CONCAT('+34 600000', LPAD(i,3,'0')),
             CONCAT('empleado', i, '@clinica.com'),
-            CASE
-                WHEN i <= 3 THEN 1
-                WHEN i <= 6 THEN 2
-                ELSE 3
-            END,
+            CASE WHEN i <= 3 THEN 1 WHEN i <= 6 THEN 2 ELSE 3 END,
             TRUE
         );
         SET i = i + 1;
     END WHILE;
-
-    -- EmpleadoEspecialidad (solo para médicos)
-    INSERT INTO EmpleadoEspecialidad(empleado_id, especialidad_id)
-    SELECT empleado_id, 1 FROM Empleados WHERE categoria_id = 1
-    ON DUPLICATE KEY UPDATE especialidad_id = VALUES(especialidad_id);
 
     -- Proveedores
     INSERT INTO Proveedores(nombre, telefono, correo, direccion) VALUES
@@ -92,7 +90,7 @@ BEGIN
     ('Proveedor Estética 2','+34 910000002','contacto2@proveedor.com','C/ Proveedor 2, Madrid')
     ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
 
-    -- Inventario básico
+    -- Inventario
     INSERT INTO Inventario(nombre,tipo,stock_actual,unidad,costo_unitario,proveedor_id) VALUES
     ('Crema hidratante post-tratamiento','producto',200,'uds',8.00,1),
     ('Ácido hialurónico vial','insumo',120,'uds',45.00,1),
@@ -111,20 +109,6 @@ BEGIN
     ('Mascarilla peel-off','producto',200,'uds',5.00,1)
     ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
 
-    -- Campañas marketing
-    INSERT INTO CampañasMarketing(nombre, canal, fecha_inicio, fecha_fin, presupuesto) VALUES
-    ('Promo verano láser','Instagram', DATE_SUB(CURDATE(), INTERVAL 90 DAY), DATE_SUB(CURDATE(), INTERVAL 60 DAY), 1500.00),
-    ('Campaña facial otoño','Google Ads', DATE_SUB(CURDATE(), INTERVAL 60 DAY), DATE_SUB(CURDATE(), INTERVAL 30 DAY), 1200.00),
-    ('Colaboración influencer belleza','Colaboración', DATE_SUB(CURDATE(), INTERVAL 30 DAY), CURDATE(), 2000.00)
-    ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
-
-    -- Promociones
-    INSERT INTO DescuentosPromociones(nombre, tipo, valor, fecha_inicio, fecha_fin) VALUES
-    ('-20% Láser verano','porcentaje',20.00, DATE_SUB(CURDATE(), INTERVAL 90 DAY), DATE_SUB(CURDATE(), INTERVAL 60 DAY)),
-    ('Peeling 2x1','porcentaje',50.00, DATE_SUB(CURDATE(), INTERVAL 45 DAY), DATE_SUB(CURDATE(), INTERVAL 15 DAY)),
-    ('Bono 3 masajes','cantidad_fija',30.00, DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY))
-    ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
-
     -- Clientes
     SET i = 1;
     WHILE i <= max_clientes DO
@@ -139,19 +123,18 @@ BEGIN
             CONCAT('+34 600', LPAD(i,6,'0')),
             CONCAT('cliente', i, '@correo.com'),
             CONCAT('C/ Falsa ', i, ', Ciudad'),
-            DATE_SUB(CURDATE(), INTERVAL FLOOR(RAND()*365) DAY),
+            NULL,
             ELT(FLOOR(1 + RAND()*5),'Google','Instagram','Recomendacion','Web','Publicidad')
         );
         SET i = i + 1;
     END WHILE;
 
-    -- Actualizar edad con la función
-    UPDATE Clientes
-    SET edad = fn_calcular_edad(fecha_nacimiento);
+    -- Actualizar edad
+    UPDATE Clientes SET edad = fn_calcular_edad(fecha_nacimiento);
 
     -- Citas + Pagos + Valoraciones + ConsumoMaterial
     SET i = 1;
-    WHILE i <= (max_clientes * 7) DO  -- ~7 citas de media por cliente
+    WHILE i <= (max_clientes * 7) DO
         SET cli_id = 1 + FLOOR(RAND() * max_clientes);
         SET emp_id = 1 + FLOOR(RAND() * max_empleados);
         SET trat_id = 1 + FLOOR(RAND() * max_tratamientos);
@@ -171,7 +154,6 @@ BEGIN
 
         SET cita_id_local = LAST_INSERT_ID();
 
-        -- Si la cita está realizada, generar pago y posible valoración
         IF (SELECT estado FROM Citas WHERE cita_id = cita_id_local) = 'realizada' THEN
             INSERT INTO Pagos(cita_id, metodo_pago, monto, fecha_pago)
             SELECT
@@ -185,22 +167,23 @@ BEGIN
 
             IF RAND() > 0.3 THEN
                 INSERT INTO Valoraciones(cita_id, puntuacion, comentario)
-                VALUES (
-                    cita_id_local,
-                    3 + FLOOR(RAND()*3),
-                    'Valoración automática de prueba'
-                );
+                VALUES (cita_id_local, 3 + FLOOR(RAND()*3), 'Valoración automática de prueba');
             END IF;
 
-            -- Consumo material básico ligado al tratamiento_id (simplificado)
             INSERT INTO ConsumoMaterial(cita_id, item_id, cantidad_usada)
             VALUES
-                (cita_id_local, 3, 1), -- jeringas
-                (cita_id_local, 4, 2); -- guantes
+                (cita_id_local, 3, 1),
+                (cita_id_local, 4, 2);
         END IF;
 
         SET i = i + 1;
     END WHILE;
+
+    -- 🟢 REACTIVAR TRIGGERS Y CHECKS
+    SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;
+    SET UNIQUE_CHECKS = @OLD_UNIQUE_CHECKS;
+    SET @TRIGGER_DISABLED = FALSE;
+
 END$$
 
 DELIMITER ;

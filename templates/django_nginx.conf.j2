@@ -1,14 +1,1 @@
-server {
-    listen 80;
-    server_name {{ certbot.domain }};
-
-    location / {
-        proxy_pass http://unix:/var/www/clinica_app/gunicorn.sock;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location /static/ {
-        alias /var/www/clinica_app/static/;
-    }
-}
+django_nginx.conf.j2

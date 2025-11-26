@@ -1,5 +1,6 @@
 -- ============================================================
 -- ESTRUCTURA COMPLETA DE LA BASE DE DATOS - CLÍNICA ESTÉTICA
+-- COMPATIBLE CON MYSQL 5.7 / 8.0
 -- ============================================================
 
 DROP DATABASE IF EXISTS clinica_db;
@@ -35,9 +36,8 @@ DROP TABLE IF EXISTS CategoriasEmpleados;
 DROP TABLE IF EXISTS Clientes;
 DROP TABLE IF EXISTS EstadisticasDiarias;
 
-
 -- ---------------------------------------------
--- CLIENTES
+-- CLIENTES (CORREGIDO: sin DEFAULT CURRENT_DATE)
 -- ---------------------------------------------
 CREATE TABLE Clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,7 +50,7 @@ CREATE TABLE Clientes (
     telefono VARCHAR(20),
     correo VARCHAR(100),
     direccion TEXT,
-    fecha_registro DATE DEFAULT CURRENT_DATE,
+    fecha_registro DATE,
     origen_cliente ENUM('Google','Instagram','Recomendacion','Web','Publicidad','Otro') DEFAULT 'Recomendacion'
 ) ENGINE=InnoDB;
 
@@ -308,23 +308,18 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =============================================
 -- ÍNDICES
 -- =============================================
-
 CREATE INDEX idx_citas_cliente ON Citas(cliente_id);
 CREATE INDEX idx_citas_empleado ON Citas(empleado_id);
 CREATE INDEX idx_citas_fecha ON Citas(fecha_cita);
-
 CREATE INDEX idx_pagos_fecha ON Pagos(fecha_pago);
 CREATE INDEX idx_mov_inv_fecha ON MovimientosInventario(fecha_movimiento);
-
 CREATE INDEX idx_inventario_tipo ON Inventario(tipo);
-
 CREATE INDEX idx_trat_prev_cli ON TratamientosPrevios(cliente_id);
 CREATE INDEX idx_trat_prev_fecha ON TratamientosPrevios(fecha_tratamiento);
 
 -- =============================================
 -- FUNCIÓN
 -- =============================================
-
 DELIMITER $$
 
 CREATE FUNCTION fn_calcular_edad(fecha_nacimiento DATE)
@@ -342,71 +337,77 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- TRIGGERS
+-- TRIGGERS SEGUROS (NO RECURSIVOS)
 -- =============================================
 
 DELIMITER $$
 
--- 1. Pago = cita realizada
-CREATE TRIGGER trg_actualizar_estado_cita
-AFTER INSERT ON Pagos
-FOR EACH ROW
-BEGIN
-    UPDATE Citas SET estado = 'realizada'
-    WHERE cita_id = NEW.cita_id;
-END$$
-
--- 2. Cita realizada → Historial
-CREATE TRIGGER trg_insertar_tratamiento_prev
-AFTER UPDATE ON Citas
-FOR EACH ROW
-BEGIN
-    IF NEW.estado = 'realizada' AND OLD.estado <> 'realizada' THEN
-        INSERT INTO TratamientosPrevios(cliente_id, tratamiento_id, fecha_tratamiento, notas)
-        VALUES (NEW.cliente_id, NEW.tratamiento_id, NEW.fecha_cita, NEW.observaciones);
-    END IF;
-END$$
-
--- 3. Consumo = descontar stock
-CREATE TRIGGER trg_descontar_stock
-AFTER INSERT ON ConsumoMaterial
-FOR EACH ROW
-BEGIN
-    UPDATE Inventario
-    SET stock_actual = stock_actual - NEW.cantidad_usada
-    WHERE item_id = NEW.item_id;
-END$$
-
--- 4. Movimiento inventario
-CREATE TRIGGER trg_movimiento_inventario
-AFTER INSERT ON MovimientosInventario
-FOR EACH ROW
-BEGIN
-    IF NEW.tipo = 'entrada' THEN
-        UPDATE Inventario SET stock_actual = stock_actual + NEW.cantidad
-        WHERE item_id = NEW.item_id;
-    ELSEIF NEW.tipo = 'salida' THEN
-        UPDATE Inventario SET stock_actual = stock_actual - NEW.cantidad
-        WHERE item_id = NEW.item_id;
-    END IF;
-END$$
-
--- 5. Cliente nuevo → ficha vacía
 CREATE TRIGGER trg_crear_ficha_medica
 AFTER INSERT ON Clientes
 FOR EACH ROW
 BEGIN
-    INSERT INTO FichasMedicas(cliente_id, alergias, antecedentes, observaciones)
-    VALUES (NEW.cliente_id, '', '', '');
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        INSERT INTO FichasMedicas(cliente_id, alergias, antecedentes, observaciones)
+        VALUES (NEW.cliente_id, '', '', '');
+    END IF;
 END$$
 
--- 6. Log actividad cita
+CREATE TRIGGER trg_actualizar_estado_cita
+AFTER INSERT ON Pagos
+FOR EACH ROW
+BEGIN
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        UPDATE Citas SET estado = 'realizada'
+        WHERE cita_id = NEW.cita_id;
+    END IF;
+END$$
+
+CREATE TRIGGER trg_insertar_tratamiento_prev
+AFTER UPDATE ON Citas
+FOR EACH ROW
+BEGIN
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        IF NEW.estado = 'realizada' AND OLD.estado <> 'realizada' THEN
+            INSERT INTO TratamientosPrevios(cliente_id, tratamiento_id, fecha_tratamiento, notas)
+            VALUES (NEW.cliente_id, NEW.tratamiento_id, NEW.fecha_cita, NEW.observaciones);
+        END IF;
+    END IF;
+END$$
+
+CREATE TRIGGER trg_descontar_stock
+AFTER INSERT ON ConsumoMaterial
+FOR EACH ROW
+BEGIN
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        UPDATE Inventario
+        SET stock_actual = stock_actual - NEW.cantidad_usada
+        WHERE item_id = NEW.item_id;
+    END IF;
+END$$
+
+CREATE TRIGGER trg_movimiento_inventario
+AFTER INSERT ON MovimientosInventario
+FOR EACH ROW
+BEGIN
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        IF NEW.tipo = 'entrada' THEN
+            UPDATE Inventario SET stock_actual = stock_actual + NEW.cantidad
+            WHERE item_id = NEW.item_id;
+        ELSEIF NEW.tipo = 'salida' THEN
+            UPDATE Inventario SET stock_actual = stock_actual - NEW.cantidad
+            WHERE item_id = NEW.item_id;
+        END IF;
+    END IF;
+END$$
+
 CREATE TRIGGER trg_log_actividad_cita
 AFTER UPDATE ON Citas
 FOR EACH ROW
 BEGIN
-    INSERT INTO LogsActividad(empleado_id, accion)
-    VALUES (NEW.empleado_id, CONCAT('Cita ', NEW.cita_id, ' actualizada a ', NEW.estado));
+    IF @TRIGGER_DISABLED IS NULL OR @TRIGGER_DISABLED = FALSE THEN
+        INSERT INTO LogsActividad(empleado_id, accion)
+        VALUES (NEW.empleado_id, CONCAT('Cita ', NEW.cita_id, ' actualizada a ', NEW.estado));
+    END IF;
 END$$
 
 DELIMITER ;
@@ -414,7 +415,6 @@ DELIMITER ;
 -- =============================================
 -- PROCEDIMIENTO ESTADÍSTICAS
 -- =============================================
-
 DELIMITER $$
 
 CREATE PROCEDURE sp_calcular_estadisticas_dia(IN p_fecha DATE)
@@ -484,7 +484,6 @@ GROUP BY e.empleado_id, e.nombre, e.apellido;
 -- =============================================
 -- EVENTOS
 -- =============================================
-
 SET GLOBAL event_scheduler = ON;
 
 DELIMITER $$

@@ -1,59 +1,66 @@
----
-- name: Instalar Django en frontends
-  hosts: frontend
+- hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar dependencias
+    - name: Instalar dependencias de sistema
       apt:
         name:
           - python3
           - python3-venv
           - python3-pip
           - libmysqlclient-dev
+          - nginx
         update_cache: yes
 
-    - name: Crear carpeta del proyecto
+    - name: Crear directorio para la app de la clínica
       file:
         path: /var/www/clinica_app
         state: directory
         owner: www-data
         group: www-data
+        mode: "0755"
 
     - name: Crear entorno virtual
       command: python3 -m venv /var/www/clinica_app/venv
+      args:
+        creates: /var/www/clinica_app/venv
 
-    - name: Instalar Django + Gunicorn + mysqlclient
+    - name: Instalar Django, Gunicorn y mysqlclient en el venv
       command: /var/www/clinica_app/venv/bin/pip install django gunicorn mysqlclient
 
-    - name: Crear proyecto inicial
+    - name: Crear proyecto Django si no existe
       command: /var/www/clinica_app/venv/bin/django-admin startproject clinica /var/www/clinica_app
       args:
         creates: /var/www/clinica_app/clinica
 
+    - name: Crear app 'core' si no existe
+      command: /var/www/clinica_app/venv/bin/python manage.py startapp core
+      args:
+        chdir: /var/www/clinica_app
+        creates: /var/www/clinica_app/core
+
     - name: Copiar settings.py
       template:
-        src: ../templates/django_settings.py.j2
+        src: django_settings.py.j2
         dest: /var/www/clinica_app/clinica/settings.py
+        owner: www-data
+        group: www-data
+        mode: "0644"
 
     - name: Copiar wsgi.py
       template:
-        src: ../templates/django_wsgi.py.j2
+        src: django_wsgi.py.j2
         dest: /var/www/clinica_app/clinica/wsgi.py
+        owner: www-data
+        group: www-data
+        mode: "0644"
 
-    - name: Copiar servicio Gunicorn
-      template:
-        src: ../templates/django_wsgi.service.j2
-        dest: /etc/systemd/system/django_clinica.service
-
-    - name: Recargar systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Iniciar Gunicorn
-      systemd:
-        name: django_clinica.service
-        enabled: yes
-        state: started
+    - name: Asegurar que la app 'core' está en INSTALLED_APPS
+      lineinfile:
+        path: /var/www/clinica_app/clinica/settings.py
+        regexp: "INSTALLED_APPS = \\["
+        line: "INSTALLED_APPS = [\n    'core',"
+        insertafter: "INSTALLED_APPS = \\["
+      when: false  # solo por si quisieras automatizarlo; lo tienes ya en la plantilla

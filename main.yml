@@ -1,9 +1,13 @@
+---
 - import_playbook: playbooks/setup_backend.yml
 - import_playbook: playbooks/deploy_backend.yml
 - import_playbook: playbooks/setup_replication.yml
+
 - import_playbook: playbooks/setup_nfs_server.yml
 - import_playbook: playbooks/setup_nfs_client.yml
+
 - import_playbook: playbooks/setup_django.yml
 - import_playbook: playbooks/deploy_django.yml
+
 - import_playbook: playbooks/setup_loadbalancer.yml
 - import_playbook: playbooks/setup_letsencrypt_https.yml
