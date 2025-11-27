@@ -4,7 +4,6 @@ db:
   password: ClinicUser.123
   root_password: RootClinica.123
 
-  # NUEVO - necesario para replicación
   repl_user: repl_user
   repl_password: ReplPass123
 
@@ -12,4 +11,13 @@ db:
   slaves:
     - 10.0.2.125
 
-nfs_server: 10.0.2.225
+certbot:
+  email: "fernandezbonillamarina@gmail.com"
+  domain: "miclinica.ddns.net"   
+
+loadbalancer:
+  ip: "10.0.1.61"                  
+
+frontend_hosts:
+  - "10.0.2.124"                 
+  - "10.0.2.164"                   
