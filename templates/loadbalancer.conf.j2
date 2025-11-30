@@ -1,6 +1,7 @@
-upstream clinica_frontend {
-    server 10.0.2.124;
-    server 10.0.2.164;
+upstream django_backend {
+    {% for host in groups['frontend'] %}
+    server {{ hostvars[host].ansible_host }}:80;
+    {% endfor %}
 }
 
 server {
@@ -8,7 +9,7 @@ server {
     server_name {{ certbot.domain }};
 
     location / {
-        proxy_pass http://clinica_frontend;
+        proxy_pass http://django_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

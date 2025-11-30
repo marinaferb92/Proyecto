@@ -1,11 +1,12 @@
 ---
-- name: Configurar load balancer para Django
+- name: Configurar Load Balancer Nginx
   hosts: loadbalancer
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
+
     - name: Instalar nginx
       apt:
         name: nginx
@@ -16,14 +17,14 @@
         src: ../templates/loadbalancer.conf.j2
         dest: /etc/nginx/sites-available/loadbalancer.conf
 
-    - name: Activar config
+    - name: Activar configuración
       file:
         src: /etc/nginx/sites-available/loadbalancer.conf
         dest: /etc/nginx/sites-enabled/loadbalancer.conf
         state: link
         force: yes
 
-    - name: Eliminar default
+    - name: Eliminar default nginx
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent

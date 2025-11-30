@@ -1,49 +1,92 @@
-- hosts: frontend
+---
+- name: Desplegar cambios Django
+  hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Copiar servicio de Gunicorn
-      template:
-        src: django_gunicorn.service.j2
-        dest: /etc/systemd/system/django_clinica.service
-        mode: "0644"
 
-    - name: Recargar systemd
-      systemd:
-        daemon_reload: yes
+    ##########################################################
+    # 1. REQUIREMENTS
+    ##########################################################
+    - name: Copiar requirements.txt
+      copy:
+        src: ../templates/requirements.txt
+        dest: /var/www/clinica_app/requirements.txt
 
-    - name: Iniciar y habilitar servicio Gunicorn
-      systemd:
-        name: django_clinica.service
-        state: started
-        enabled: yes
+    - name: Instalar/actualizar paquetes Python desde requirements
+      command: /var/www/clinica_app/venv/bin/pip3 install -r /var/www/clinica_app/requirements.txt
+      register: pip_install
+      changed_when: "'Successfully installed' in pip_install.stdout or 'Installing collected packages' in pip_install.stdout"
+      failed_when: false
 
-    - name: Recoger estáticos de Django
-      command: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
-      args:
-        chdir: /var/www/clinica_app
 
-    - name: Copiar configuración Nginx para Django
-      template:
-        src: django_nginx.conf.j2
-        dest: /etc/nginx/sites-available/clinica.conf
-        mode: "0644"
-
-    - name: Activar sitio Nginx
+    ##########################################################
+    # 2. RESET + CREACIÓN MIGRACIONES CORE (IDEMPOTENTE)
+    ##########################################################
+    - name: Eliminar carpeta migrations de core
       file:
-        src: /etc/nginx/sites-available/clinica.conf
-        dest: /etc/nginx/sites-enabled/clinica.conf
-        state: link
-        force: yes
-
-    - name: Eliminar sitio por defecto Nginx
-      file:
-        path: /etc/nginx/sites-enabled/default
+        path: /var/www/clinica_app/core/migrations
         state: absent
 
+    - name: Crear carpeta migrations limpia
+      file:
+        path: /var/www/clinica_app/core/migrations
+        state: directory
+
+    - name: Crear __init__.py en migrations
+      file:
+        path: /var/www/clinica_app/core/migrations/__init__.py
+        state: touch
+
+    - name: Generar migraciones core
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python manage.py makemigrations core
+        chdir: /var/www/clinica_app
+      register: makemigrations_result
+      failed_when: makemigrations_result.rc != 0
+
+
+    ##########################################################
+    # 3. MIGRAR CON FAKE-INITIAL (evita error tablas existentes)
+    ##########################################################
+    - name: Aplicar migraciones core sin recrear tablas (fake-initial)
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python manage.py migrate core --fake-initial --noinput
+        chdir: /var/www/clinica_app
+      register: core_migrate
+      failed_when: core_migrate.rc != 0
+
+    - name: Migraciones globales del proyecto
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python manage.py migrate --noinput
+        chdir: /var/www/clinica_app
+      register: global_migrate
+      failed_when: global_migrate.rc != 0
+
+
+    ##########################################################
+    # 4. RECOGER ESTÁTICOS
+    ##########################################################
+    - name: Collectstatic
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
+        chdir: /var/www/clinica_app
+      register: static_result
+      failed_when: static_result.rc != 0
+
+
+    ##########################################################
+    # 5. REINICIAR SERVICIOS
+    ##########################################################
+    - name: Reiniciar Gunicorn
+      systemd:
+        name: django_gunicorn.service
+        state: restarted
+        enabled: yes
+
     - name: Reiniciar Nginx
-      service:
+      systemd:
         name: nginx
         state: restarted

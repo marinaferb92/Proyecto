@@ -1,0 +1,54 @@
+from django.shortcuts import render, redirect
+from django.http import HttpResponse
+from .models import Cliente, Cita
+from .forms import ClienteForm, CitaForm
+
+########################################
+# DASHBOARD
+########################################
+def dashboard(request):
+    total_clientes = Cliente.objects.count()
+    total_citas = Cita.objects.count()
+    citas_pendientes = Cita.objects.filter(estado="pendiente").count()
+
+    return render(request, "core/dashboard.html", {
+        "total_clientes": total_clientes,
+        "total_citas": total_citas,
+        "citas_pendientes": citas_pendientes,
+    })
+
+########################################
+# CLIENTES
+########################################
+def clientes_list(request):
+    clientes = Cliente.objects.all()
+    return render(request, "core/clientes_list.html", {"clientes": clientes})
+
+def cliente_form(request):
+    if request.method == "POST":
+        form = ClienteForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("clientes_list")
+    else:
+        form = ClienteForm()
+
+    return render(request, "core/cliente_form.html", {"form": form})
+
+########################################
+# CITAS
+########################################
+def citas_list(request):
+    citas = Cita.objects.all()
+    return render(request, "core/citas_list.html", {"citas": citas})
+
+def cita_form(request):
+    if request.method == "POST":
+        form = CitaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("citas_list")
+    else:
+        form = CitaForm()
+
+    return render(request, "core/cita_form.html", {"form": form})

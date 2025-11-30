@@ -1,66 +1,178 @@
-- hosts: frontend
+---
+- name: Configurar entorno Django en los frontends
+  hosts: frontend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar dependencias de sistema
+
+    ##########################################################
+    # 1. INSTALAR DEPENDENCIAS
+    ##########################################################
+    - name: Instalar dependencias
       apt:
         name:
           - python3
-          - python3-venv
           - python3-pip
-          - libmysqlclient-dev
+          - python3-venv
+          - build-essential
+          - python3-dev
+          - default-libmysqlclient-dev
+          - pkg-config
           - nginx
         update_cache: yes
 
-    - name: Crear directorio para la app de la clínica
+    ##########################################################
+    # 2. DIRECTORIO DEL PROYECTO
+    ##########################################################
+    - name: Crear carpeta del proyecto
       file:
         path: /var/www/clinica_app
         state: directory
-        owner: www-data
-        group: www-data
         mode: "0755"
 
-    - name: Crear entorno virtual
+    ##########################################################
+    # 3. VENV
+    ##########################################################
+    - name: Crear venv
       command: python3 -m venv /var/www/clinica_app/venv
       args:
         creates: /var/www/clinica_app/venv
 
-    - name: Instalar Django, Gunicorn y mysqlclient en el venv
-      command: /var/www/clinica_app/venv/bin/pip install django gunicorn mysqlclient
+    ##########################################################
+    # 4. INSTALAR REQUIREMENTS
+    ##########################################################
+    - name: Copiar requirements.txt
+      copy:
+        src: ../templates/requirements.txt
+        dest: /var/www/clinica_app/requirements.txt
 
-    - name: Crear proyecto Django si no existe
-      command: /var/www/clinica_app/venv/bin/django-admin startproject clinica /var/www/clinica_app
-      args:
-        creates: /var/www/clinica_app/clinica
+    - name: Instalar paquetes Python
+      command: /var/www/clinica_app/venv/bin/pip install -r /var/www/clinica_app/requirements.txt
 
-    - name: Crear app 'core' si no existe
-      command: /var/www/clinica_app/venv/bin/python manage.py startapp core
-      args:
+    ##########################################################
+    # 5. CREAR PROYECTO DJANGO
+    ##########################################################
+    - name: Crear proyecto Django
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python -m django startproject clinica .
         chdir: /var/www/clinica_app
-        creates: /var/www/clinica_app/core
+      args:
+        creates: /var/www/clinica_app/manage.py
 
-    - name: Crear carpeta para templates
+    ##########################################################
+    # 6. CREAR APP CORE
+    ##########################################################
+    - name: Crear app core
+      command:
+        cmd: /var/www/clinica_app/venv/bin/python manage.py startapp core
+        chdir: /var/www/clinica_app
+      args:
+        creates: /var/www/clinica_app/core/apps.py
+
+    ##########################################################
+    # 7. LIMPIAR MIGRACIONES CORE (IDEMPOTENCIA REAL)
+    ##########################################################
+    - name: Borrar carpeta de migraciones antiguas
       file:
-        path: /var/www/clinica_app/templates
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: "0755"
+        path: /var/www/clinica_app/core/migrations
+        state: absent
 
-    - name: Copiar settings.py
+    - name: Crear carpeta de migraciones nueva
+      file:
+        path: /var/www/clinica_app/core/migrations
+        state: directory
+
+    - name: Crear fichero __init__.py
+      file:
+        path: /var/www/clinica_app/core/migrations/__init__.py
+        state: touch
+
+    ##########################################################
+    # 8. COPIAR CONFIGURACIONES, MODELS, VIEWS, URLS
+    ##########################################################
+    - name: Copiar settings actualizados
       template:
-        src: django_settings.py.j2
+        src: ../templates/django_settings.py.j2
         dest: /var/www/clinica_app/clinica/settings.py
-        owner: www-data
-        group: www-data
-        mode: "0644"
+
+    - name: Copiar urls.py del proyecto
+      template:
+        src: ../templates/django_urls.py.j2
+        dest: /var/www/clinica_app/clinica/urls.py
 
     - name: Copiar wsgi.py
       template:
-        src: django_wsgi.py.j2
+        src: ../templates/django_wsgi.py.j2
         dest: /var/www/clinica_app/clinica/wsgi.py
-        owner: www-data
-        group: www-data
         mode: "0644"
+
+    - name: Copiar apps.py
+      template:
+        src: ../templates/core_apps.py.j2
+        dest: /var/www/clinica_app/core/apps.py
+
+    - name: Copiar models.py
+      template:
+        src: ../templates/core_models.py.j2
+        dest: /var/www/clinica_app/core/models.py
+
+    - name: Copiar views.py
+      template:
+        src: ../templates/core_views.py.j2
+        dest: /var/www/clinica_app/core/views.py
+
+    - name: Copiar forms.py
+      template:
+        src: ../templates/core_forms.py.j2
+        dest: /var/www/clinica_app/core/forms.py
+
+    - name: Copiar urls.py de core
+      template:
+        src: ../templates/core_urls.py.j2
+        dest: /var/www/clinica_app/core/urls.py
+
+    - name: Copiar admin.py
+      template:
+        src: ../templates/core_admin.py.j2
+        dest: /var/www/clinica_app/core/admin.py
+
+    ##########################################################
+    # 9. TEMPLATES HTML
+    ##########################################################
+    - name: Crear carpeta templates/core
+      file:
+        path: /var/www/clinica_app/templates/core
+        state: directory
+        recurse: yes
+
+    - name: Copiar base.html
+      copy:
+        src: ../templates/base.html
+        dest: /var/www/clinica_app/templates/base.html
+
+    - name: Copiar dashboard
+      copy:
+        src: ../templates/core_dashboard.html
+        dest: /var/www/clinica_app/templates/core/dashboard.html
+
+    - name: Copiar clientes_list
+      copy:
+        src: ../templates/core_clientes_list.html
+        dest: /var/www/clinica_app/templates/core/clientes_list.html
+
+    - name: Copiar cliente_form
+      copy:
+        src: ../templates/core_cliente_form.html
+        dest: /var/www/clinica_app/templates/core/cliente_form.html
+
+    - name: Copiar citas_list
+      copy:
+        src: ../templates/core_citas_list.html
+        dest: /var/www/clinica_app/templates/core/citas_list.html
+
+    - name: Copiar cita_form
+      copy:
+        src: ../templates/core_cita_form.html
+        dest: /var/www/clinica_app/templates/core/cita_form.html

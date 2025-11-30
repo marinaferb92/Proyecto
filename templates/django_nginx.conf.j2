@@ -1,13 +1,10 @@
 server {
     listen 80;
-    server_name {{ certbot.domain | default('_') }};
+
+    server_name _;
 
     location /static/ {
         alias /var/www/clinica_app/static/;
-    }
-
-    location /media/ {
-        alias /var/www/clinica_media/;
     }
 
     location / {

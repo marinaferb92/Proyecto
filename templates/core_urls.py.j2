@@ -1,0 +1,12 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.dashboard, name='dashboard'),
+
+    path('clientes/', views.clientes_list, name='clientes_list'),
+    path('clientes/nuevo/', views.cliente_form, name='cliente_form'),
+
+    path('citas/', views.citas_list, name='citas_list'),
+    path('citas/nueva/', views.cita_form, name='cita_form'),
+]

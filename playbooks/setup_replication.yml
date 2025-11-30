@@ -7,20 +7,19 @@
     - ../vars/variables.yml
 
   tasks:
-
-    - name: Obtener log y posición del master
+    - name: Obtener estado
       mysql_replication:
         mode: getprimary
         login_user: root
         login_password: "{{ db.root_password }}"
       register: master_status
 
-    - name: Guardar datos del master
-      set_fact:
+    - set_fact:
         master_log_file: "{{ master_status.File }}"
         master_log_pos: "{{ master_status.Position }}"
 
-# 2) CONFIGURAR REPLICA EN backend2
+
+# 2) CONFIGURAR RÉPLICA
 - name: Configurar backend2 como réplica
   hosts: backend2
   become: yes
@@ -29,14 +28,14 @@
 
   tasks:
 
-    - name: Detener réplica previa si existe
+    - name: Parar réplica previa
       mysql_replication:
         mode: stopreplica
         login_user: root
         login_password: "{{ db.root_password }}"
       ignore_errors: yes
 
-    - name: Configurar nuevo master
+    - name: Configurar master
       mysql_replication:
         mode: changeprimary
         master_host: "{{ hostvars['backend1'].ansible_host }}"
@@ -47,7 +46,7 @@
         login_user: root
         login_password: "{{ db.root_password }}"
 
-    - name: Iniciar replicación
+    - name: Iniciar réplica
       mysql_replication:
         mode: startreplica
         login_user: root

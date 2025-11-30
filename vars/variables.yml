@@ -17,7 +17,3 @@ certbot:
 
 loadbalancer:
   ip: "10.0.1.61"                  
-
-frontend_hosts:
-  - "10.0.2.124"                 
-  - "10.0.2.164"                   

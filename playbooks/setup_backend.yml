@@ -1,25 +1,22 @@
 ---
-- name: Preparar servidores backend MySQL
+- name: Preparar Backend MySQL (idempotente)
   hosts: backend
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Actualizar sistema
-      apt:
-        update_cache: yes
-        upgrade: yes
 
-    - name: Instalar MySQL Server
+    - name: Instalar MySQL + dependencias
       apt:
         name:
           - mysql-server
           - python3-pymysql
+        update_cache: yes
         state: present
 
     - name: Asegurar que MySQL está iniciado
-      service:
+      systemd:
         name: mysql
         state: started
         enabled: yes
@@ -30,25 +27,25 @@
         regexp: '^event_scheduler'
         line: 'event_scheduler = ON'
 
-    - name: Asegurar bind-address abierto
+    - name: Abrir bind-address
       lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
 
     - name: Reiniciar MySQL
-      service:
+      systemd:
         name: mysql
         state: restarted
 
-    - name: Crear base de datos clínica
+    - name: Crear base de datos
       mysql_db:
         name: "{{ db.name }}"
         state: present
         login_user: root
         login_password: "{{ db.root_password }}"
 
-    - name: Crear usuario para frontends
+    - name: Crear usuario frontends
       mysql_user:
         name: "{{ db.user }}"
         password: "{{ db.password }}"
@@ -67,4 +64,3 @@
         state: present
         login_user: root
         login_password: "{{ db.root_password }}"
-
