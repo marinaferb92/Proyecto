@@ -1,5 +1,5 @@
 ---
-- name: Desplegar cambios Django
+- name: Desplegar Django sincronizado con DB existente
   hosts: frontend
   become: yes
   vars_files:
@@ -8,85 +8,84 @@
   tasks:
 
     ##########################################################
-    # 1. REQUIREMENTS
+    # 1. CREAR MIGRACIONES DEL CORE
     ##########################################################
-    - name: Copiar requirements.txt
-      copy:
-        src: ../templates/requirements.txt
-        dest: /var/www/clinica_app/requirements.txt
-
-    - name: Instalar/actualizar paquetes Python desde requirements
-      command: /var/www/clinica_app/venv/bin/pip3 install -r /var/www/clinica_app/requirements.txt
-      register: pip_install
-      changed_when: "'Successfully installed' in pip_install.stdout or 'Installing collected packages' in pip_install.stdout"
-      failed_when: false
-
-
-    ##########################################################
-    # 2. RESET + CREACIÓN MIGRACIONES CORE (IDEMPOTENTE)
-    ##########################################################
-    - name: Eliminar carpeta migrations de core
-      file:
-        path: /var/www/clinica_app/core/migrations
-        state: absent
-
-    - name: Crear carpeta migrations limpia
-      file:
-        path: /var/www/clinica_app/core/migrations
-        state: directory
-
-    - name: Crear __init__.py en migrations
-      file:
-        path: /var/www/clinica_app/core/migrations/__init__.py
-        state: touch
-
-    - name: Generar migraciones core
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python manage.py makemigrations core
+    - name: Generar migraciones del core
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py makemigrations core
+      args:
         chdir: /var/www/clinica_app
-      register: makemigrations_result
-      failed_when: makemigrations_result.rc != 0
-
 
     ##########################################################
-    # 3. MIGRAR CON FAKE-INITIAL (evita error tablas existentes)
+    # 2. FAKES PARA TODAS LAS APPS QUE YA TIENEN TABLAS
     ##########################################################
-    - name: Aplicar migraciones core sin recrear tablas (fake-initial)
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python manage.py migrate core --fake-initial --noinput
+    - name: Fake-initial para contenttypes
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate contenttypes --fake-initial --noinput
+      args:
         chdir: /var/www/clinica_app
-      register: core_migrate
-      failed_when: core_migrate.rc != 0
+      ignore_errors: yes
 
-    - name: Migraciones globales del proyecto
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python manage.py migrate --noinput
+    - name: Fake-initial para auth
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate auth --fake-initial --noinput
+      args:
         chdir: /var/www/clinica_app
-      register: global_migrate
-      failed_when: global_migrate.rc != 0
+      ignore_errors: yes
 
+    - name: Fake-initial para admin
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate admin --fake-initial --noinput
+      args:
+        chdir: /var/www/clinica_app
+      ignore_errors: yes
+
+    - name: Fake-initial para sessions
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate sessions --fake-initial --noinput
+      args:
+        chdir: /var/www/clinica_app
+      ignore_errors: yes
+
+    - name: Fake-initial para core
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate core --fake-initial --noinput
+      args:
+        chdir: /var/www/clinica_app
+      ignore_errors: yes
 
     ##########################################################
-    # 4. RECOGER ESTÁTICOS
+    # 3. AHORA SÍ: MIGRACIONES GENERALES (NO CREARÁ DUPLICADOS)
+    ##########################################################
+    - name: Migraciones globales seguras
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py migrate --noinput
+      args:
+        chdir: /var/www/clinica_app
+
+    ##########################################################
+    # 4. RECOLECTAR ESTÁTICOS
     ##########################################################
     - name: Collectstatic
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
+      command: >
+        /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
+      args:
         chdir: /var/www/clinica_app
-      register: static_result
-      failed_when: static_result.rc != 0
-
+      ignore_errors: yes
 
     ##########################################################
-    # 5. REINICIAR SERVICIOS
+    # 5. REINICIAR SERVICIO DJANGO
     ##########################################################
-    - name: Reiniciar Gunicorn
+    - name: Reiniciar servicio Django WSGI
       systemd:
-        name: django_gunicorn.service
+        name: django_wsgi
         state: restarted
         enabled: yes
 
-    - name: Reiniciar Nginx
+    ##########################################################
+    # 6. REINICIAR NGINX
+    ##########################################################
+    - name: Reiniciar nginx
       systemd:
         name: nginx
         state: restarted

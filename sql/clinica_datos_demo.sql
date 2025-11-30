@@ -1,3 +1,5 @@
+USE clinica_db;
+
 DROP PROCEDURE IF EXISTS sp_generar_datos_demo_grande;
 
 DELIMITER //

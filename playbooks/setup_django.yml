@@ -8,7 +8,7 @@
   tasks:
 
     ##########################################################
-    # 1. INSTALAR DEPENDENCIAS
+    # 1. DEPENDENCIAS
     ##########################################################
     - name: Instalar dependencias
       apt:
@@ -35,13 +35,13 @@
     ##########################################################
     # 3. VENV
     ##########################################################
-    - name: Crear venv
+    - name: Crear entorno virtual
       command: python3 -m venv /var/www/clinica_app/venv
       args:
         creates: /var/www/clinica_app/venv
 
     ##########################################################
-    # 4. INSTALAR REQUIREMENTS
+    # 4. REQUIREMENTS
     ##########################################################
     - name: Copiar requirements.txt
       copy:
@@ -54,7 +54,7 @@
     ##########################################################
     # 5. CREAR PROYECTO DJANGO
     ##########################################################
-    - name: Crear proyecto Django
+    - name: Crear proyecto Django si no existe
       command:
         cmd: /var/www/clinica_app/venv/bin/python -m django startproject clinica .
         chdir: /var/www/clinica_app
@@ -62,9 +62,9 @@
         creates: /var/www/clinica_app/manage.py
 
     ##########################################################
-    # 6. CREAR APP CORE
+    # 6. CREAR CORE
     ##########################################################
-    - name: Crear app core
+    - name: Crear app core si no existe
       command:
         cmd: /var/www/clinica_app/venv/bin/python manage.py startapp core
         chdir: /var/www/clinica_app
@@ -72,27 +72,27 @@
         creates: /var/www/clinica_app/core/apps.py
 
     ##########################################################
-    # 7. LIMPIAR MIGRACIONES CORE (IDEMPOTENCIA REAL)
+    # 7. LIMPIAR Y RECREAR MIGRACIONES
     ##########################################################
-    - name: Borrar carpeta de migraciones antiguas
+    - name: Borrar migraciones antiguas
       file:
         path: /var/www/clinica_app/core/migrations
         state: absent
 
-    - name: Crear carpeta de migraciones nueva
+    - name: Crear carpeta migrations vacía
       file:
         path: /var/www/clinica_app/core/migrations
         state: directory
 
-    - name: Crear fichero __init__.py
+    - name: Crear __init__.py en migrations
       file:
         path: /var/www/clinica_app/core/migrations/__init__.py
         state: touch
 
     ##########################################################
-    # 8. COPIAR CONFIGURACIONES, MODELS, VIEWS, URLS
+    # 8. COPIAR PLANTILLAS (MODELS, VIEWS, URLS, TEMPLATES)
     ##########################################################
-    - name: Copiar settings actualizados
+    - name: Copiar settings.py
       template:
         src: ../templates/django_settings.py.j2
         dest: /var/www/clinica_app/clinica/settings.py
@@ -106,46 +106,26 @@
       template:
         src: ../templates/django_wsgi.py.j2
         dest: /var/www/clinica_app/clinica/wsgi.py
-        mode: "0644"
 
-    - name: Copiar apps.py
-      template:
-        src: ../templates/core_apps.py.j2
-        dest: /var/www/clinica_app/core/apps.py
-
-    - name: Copiar models.py
+    - name: Copiar modelos core
       template:
         src: ../templates/core_models.py.j2
         dest: /var/www/clinica_app/core/models.py
 
-    - name: Copiar views.py
+    - name: Copiar views core
       template:
         src: ../templates/core_views.py.j2
         dest: /var/www/clinica_app/core/views.py
 
-    - name: Copiar forms.py
-      template:
-        src: ../templates/core_forms.py.j2
-        dest: /var/www/clinica_app/core/forms.py
-
-    - name: Copiar urls.py de core
+    - name: Copiar urls core
       template:
         src: ../templates/core_urls.py.j2
         dest: /var/www/clinica_app/core/urls.py
 
-    - name: Copiar admin.py
+    - name: Copiar forms core
       template:
-        src: ../templates/core_admin.py.j2
-        dest: /var/www/clinica_app/core/admin.py
-
-    ##########################################################
-    # 9. TEMPLATES HTML
-    ##########################################################
-    - name: Crear carpeta templates/core
-      file:
-        path: /var/www/clinica_app/templates/core
-        state: directory
-        recurse: yes
+        src: ../templates/core_forms.py.j2
+        dest: /var/www/clinica_app/core/forms.py
 
     - name: Copiar base.html
       copy:
@@ -155,24 +135,27 @@
     - name: Copiar dashboard
       copy:
         src: ../templates/core_dashboard.html
-        dest: /var/www/clinica_app/templates/core/dashboard.html
+        dest: /var/www/clinica_app/templates/core_dashboard.html
 
-    - name: Copiar clientes_list
-      copy:
-        src: ../templates/core_clientes_list.html
-        dest: /var/www/clinica_app/templates/core/clientes_list.html
+    - name: Asegurar que la carpeta de templates existe
+      file:
+        path: /var/www/clinica_app/templates
+        state: directory
 
-    - name: Copiar cliente_form
-      copy:
-        src: ../templates/core_cliente_form.html
-        dest: /var/www/clinica_app/templates/core/cliente_form.html
+    ##########################################################
+    # 9. COPIAR SERVICIOS SYSTEMD
+    ##########################################################
+    - name: Copiar servicio WSGI
+      template:
+        src: ../templates/django_wsgi.service.j2
+        dest: /etc/systemd/system/django_wsgi.service
+      notify:
+        - Reload Systemd
 
-    - name: Copiar citas_list
-      copy:
-        src: ../templates/core_citas_list.html
-        dest: /var/www/clinica_app/templates/core/citas_list.html
-
-    - name: Copiar cita_form
-      copy:
-        src: ../templates/core_cita_form.html
-        dest: /var/www/clinica_app/templates/core/cita_form.html
+    ##########################################################
+    # HANDLERS
+    ##########################################################
+  handlers:
+    - name: Reload Systemd
+      systemd:
+        daemon_reload: yes

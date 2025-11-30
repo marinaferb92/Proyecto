@@ -27,14 +27,20 @@
         src: ../sql/clinica_datos_demo.sql
         dest: /tmp/sql_clinica/clinica_datos_demo.sql
 
-    - name: Import structure (ignore si ya existe)
-      command: mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_estructura.sql
+    - name: Import structure
+      command: >
+        mysql -u root -p{{ db.root_password }} {{ db.name }}
+        --execute="source /tmp/sql_clinica/clinica_estructura.sql"
       ignore_errors: yes
 
-    - name: Import base
-      command: mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_datos_base.sql
+    - name: Import base data
+      command: >
+        mysql -u root -p{{ db.root_password }} {{ db.name }}
+        --execute="source /tmp/sql_clinica/clinica_datos_base.sql"
       ignore_errors: yes
 
-    - name: Import demo
-      command: mysql -u root -p{{ db.root_password }} {{ db.name }} < /tmp/sql_clinica/clinica_datos_demo.sql
+    - name: Import demo data
+      command: >
+        mysql -u root -p{{ db.root_password }} {{ db.name }}
+        --execute="source /tmp/sql_clinica/clinica_datos_demo.sql"
       ignore_errors: yes
