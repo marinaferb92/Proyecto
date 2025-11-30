@@ -4,16 +4,20 @@ db:
   password: ClinicUser.123
   root_password: RootClinica.123
 
-  repl_user: repl_user
-  repl_password: ReplPass123
-
   master: 10.0.2.183
   slaves:
     - 10.0.2.125
 
 certbot:
   email: "fernandezbonillamarina@gmail.com"
-  domain: "miclinica.ddns.net"   
+  domain: "miclinica.ddns.net"
 
 loadbalancer:
-  ip: "10.0.1.61"                  
+  ip: "10.0.1.61"
+
+django_admin_user: "admin"
+django_admin_email: "admin@example.com"
+django_admin_password: "admin1234"
+
+secret_key: "{{ lookup('password', '/dev/null', 'ascii_letters,digits', 50) }}"
+

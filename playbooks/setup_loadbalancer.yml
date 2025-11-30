@@ -1,7 +1,8 @@
 ---
-- name: Configurar Load Balancer Nginx
+- name: Setup Load Balancer
   hosts: loadbalancer
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
@@ -12,22 +13,17 @@
         name: nginx
         state: present
 
-    - name: Copiar config del balanceador
+    - name: Copiar config de load balancer
       template:
-        src: ../templates/loadbalancer.conf.j2
-        dest: /etc/nginx/sites-available/loadbalancer.conf
+        src: "../templates/loadbalancer.conf.j2"
+        dest: "/etc/nginx/sites-available/clinica_lb.conf"
 
-    - name: Activar configuración
+    - name: Activar LB
       file:
-        src: /etc/nginx/sites-available/loadbalancer.conf
-        dest: /etc/nginx/sites-enabled/loadbalancer.conf
+        src: /etc/nginx/sites-available/clinica_lb.conf
+        dest: /etc/nginx/sites-enabled/clinica_lb.conf
         state: link
-        force: yes
-
-    - name: Eliminar default nginx
-      file:
-        path: /etc/nginx/sites-enabled/default
-        state: absent
+      ignore_errors: yes
 
     - name: Reiniciar nginx
       systemd:

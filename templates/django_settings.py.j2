@@ -1,13 +1,13 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = '{{ django.secret_key | default("inseguro123") }}'
+SECRET_KEY = "{{ secret_key }}"
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*", "{{ frontend1_ip }}", "{{ frontend2_ip }}"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -16,7 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',  # <- ACTIVADA AHORA
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -30,36 +30,23 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'clinica.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
-
 WSGI_APPLICATION = 'clinica.wsgi.application'
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': '{{ db.name }}',
-        'USER': '{{ db.user }}',
-        'PASSWORD': '{{ db.password }}',
-        'HOST': '{{ db.master }}',
-        'PORT': 3306,
+        'NAME': 'clinica_db',
+        'USER': 'clinica_user',
+        'PASSWORD': '{{ db_password }}',
+        'HOST': '{{ db_host }}',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        }
     }
 }
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / "static"
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / "media"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

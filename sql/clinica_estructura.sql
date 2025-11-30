@@ -4,9 +4,34 @@
 USE clinica_db;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- =============================================
--- TABLAS
--- =============================================
+
+-- DROP VISTAS
+DROP VIEW IF EXISTS vw_ingresos_mensuales;
+DROP VIEW IF EXISTS vw_tratamientos_mas_demandados;
+DROP VIEW IF EXISTS vw_stock_critico;
+DROP VIEW IF EXISTS vw_productividad_empleados;
+
+-- DROP EVENTOS
+DROP EVENT IF EXISTS ev_calculo_diario_estadisticas;
+DROP EVENT IF EXISTS ev_limpiar_logs;
+
+-- DROP TRIGGERS
+DROP TRIGGER IF EXISTS trg_crear_ficha_medica;
+DROP TRIGGER IF EXISTS trg_actualizar_estado_cita;
+DROP TRIGGER IF EXISTS trg_insertar_tratamiento_prev;
+DROP TRIGGER IF EXISTS trg_descontar_stock;
+DROP TRIGGER IF EXISTS trg_movimiento_inventario;
+DROP TRIGGER IF EXISTS trg_log_actividad_cita;
+
+-- DROP PROCEDURES
+DROP PROCEDURE IF EXISTS sp_calcular_estadisticas_dia;
+DROP PROCEDURE IF EXISTS sp_generar_datos_demo_grande;
+
+-- DROP FUNCTIONS
+DROP FUNCTION IF EXISTS fn_calcular_edad;
+
+-- DROP TABLAS (con FK off)
+SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS CitaPromocion;
 DROP TABLE IF EXISTS DescuentosPromociones;
@@ -31,6 +56,11 @@ DROP TABLE IF EXISTS CategoriasEmpleados;
 DROP TABLE IF EXISTS Clientes;
 DROP TABLE IF EXISTS EstadisticasDiarias;
 
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- =============================================
+-- TABLAS
+-- =============================================
 -- ---------------------------------------------
 -- CLIENTES
 -- ---------------------------------------------
@@ -507,4 +537,3 @@ END$$
 
 DELIMITER ;
 
-SET FOREIGN_KEY_CHECKS = 1;

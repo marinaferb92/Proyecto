@@ -1,90 +1,57 @@
 ---
-- name: Desplegar Django sincronizado con DB existente
+- name: Deploy Django sincronizado con DB
   hosts: frontend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
+  vars:
+    project_path: /var/www/clinica_app
+    venv_path: /var/www/clinica_app/venv
+
   tasks:
 
-    ##########################################################
-    # 1. CREAR MIGRACIONES DEL CORE
-    ##########################################################
+    - name: Borrar core viejo
+      file:
+        path: "{{ project_path }}/core"
+        state: absent
+
+    - name: Crear core limpio
+      file:
+        path: "{{ project_path }}/core"
+        state: directory
+
+    - name: Copiar models.py
+      template:
+        src: "../templates/core/core_models.py.j2"
+        dest: "{{ project_path }}/core/models.py"
+
+    - name: Copiar admin.py
+      template:
+        src: "../templates/core/core_admin.py.j2"
+        dest: "{{ project_path }}/core/admin.py"
+
+    - name: Copiar apps.py
+      template:
+        src: "../templates/core/core_apps.py.j2"
+        dest: "{{ project_path }}/core/apps.py"
+
     - name: Generar migraciones del core
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py makemigrations core
+      command: "{{ venv_path }}/bin/python manage.py makemigrations core"
       args:
-        chdir: /var/www/clinica_app
+        chdir: "{{ project_path }}"
 
-    ##########################################################
-    # 2. FAKES PARA TODAS LAS APPS QUE YA TIENEN TABLAS
-    ##########################################################
-    - name: Fake-initial para contenttypes
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate contenttypes --fake-initial --noinput
+    - name: Aplicar migraciones
+      command: "{{ venv_path }}/bin/python manage.py migrate"
       args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
+        chdir: "{{ project_path }}"
 
-    - name: Fake-initial para auth
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate auth --fake-initial --noinput
-      args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
-
-    - name: Fake-initial para admin
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate admin --fake-initial --noinput
-      args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
-
-    - name: Fake-initial para sessions
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate sessions --fake-initial --noinput
-      args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
-
-    - name: Fake-initial para core
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate core --fake-initial --noinput
-      args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
-
-    ##########################################################
-    # 3. AHORA SÍ: MIGRACIONES GENERALES (NO CREARÁ DUPLICADOS)
-    ##########################################################
-    - name: Migraciones globales seguras
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py migrate --noinput
-      args:
-        chdir: /var/www/clinica_app
-
-    ##########################################################
-    # 4. RECOLECTAR ESTÁTICOS
-    ##########################################################
-    - name: Collectstatic
-      command: >
-        /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
-      args:
-        chdir: /var/www/clinica_app
-      ignore_errors: yes
-
-    ##########################################################
-    # 5. REINICIAR SERVICIO DJANGO
-    ##########################################################
-    - name: Reiniciar servicio Django WSGI
+    - name: Reiniciar Gunicorn
       systemd:
-        name: django_wsgi
+        name: gunicorn
         state: restarted
-        enabled: yes
 
-    ##########################################################
-    # 6. REINICIAR NGINX
-    ##########################################################
     - name: Reiniciar nginx
       systemd:
         name: nginx

@@ -1,53 +1,111 @@
 ---
-# 1) OBTENER INFO DEL MASTER
-- name: Obtener estado del master MySQL
-  hosts: backend1
+- name: Configurar replicación MySQL Master/Slaves
+  hosts: backend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Obtener estado
-      mysql_replication:
-        mode: getprimary
+
+    #######################################################################
+    # Detectar rol de este servidor (según variables.yml)
+    #######################################################################
+
+    - name: Detectar si este host es el MASTER
+      set_fact:
+        is_master: "{{ ansible_host == db.master }}"
+
+    - name: Detectar si este host es SLAVE
+      set_fact:
+        is_slave: "{{ ansible_host in db.slaves }}"
+
+    - debug:
+        msg: "Host {{ inventory_hostname }} | MASTER={{ is_master }} | SLAVE={{ is_slave }}"
+
+    #######################################################################
+    # CONFIGURACIÓN DEL MASTER
+    #######################################################################
+
+    - name: Configurar MASTER - server-id = 1 y binary logging
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^server-id', line: 'server-id = 1' }
+        - { regexp: '^log_bin', line: 'log_bin = /var/log/mysql/mysql-bin.log' }
+      when: is_master
+
+    - name: Reiniciar MySQL en MASTER
+      service:
+        name: mysql
+        state: restarted
+      when: is_master
+
+    - name: Crear usuario de replicación en MASTER
+      community.mysql.mysql_user:
+        name: repl_user
+        password: "{{ db.repl_password }}"
+        host: "%"
+        priv: "*.*:REPLICATION SLAVE"
+        state: present
         login_user: root
         login_password: "{{ db.root_password }}"
+      when: is_master
+
+    - name: Obtener MASTER STATUS
+      command: mysql -u root -p{{ db.root_password }} -e "SHOW MASTER STATUS\G"
       register: master_status
+      when: is_master
 
-    - set_fact:
-        master_log_file: "{{ master_status.File }}"
-        master_log_pos: "{{ master_status.Position }}"
+    - debug:
+        var: master_status.stdout_lines
+      when: is_master
 
+    #######################################################################
+    # CONFIGURACIÓN DE LOS SLAVES
+    #######################################################################
 
-# 2) CONFIGURAR RÉPLICA
-- name: Configurar backend2 como réplica
-  hosts: backend2
-  become: yes
-  vars_files:
-    - ../vars/variables.yml
+    - name: Configurar SLAVE - server-id basado en último octeto
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^server-id'
+        line: "server-id = {{ ansible_host.split('.')[-1] }}"
+      when: is_slave
 
-  tasks:
+    - name: Reiniciar MySQL en SLAVE
+      service:
+        name: mysql
+        state: restarted
+      when: is_slave
 
-    - name: Parar réplica previa
-      mysql_replication:
-        mode: stopreplica
-        login_user: root
-        login_password: "{{ db.root_password }}"
-      ignore_errors: yes
+    - name: Parar replicación por si estaba activa
+      command: mysql -u root -p{{ db.root_password }} -e "STOP SLAVE;"
+      when: is_slave
 
-    - name: Configurar master
-      mysql_replication:
-        mode: changeprimary
-        master_host: "{{ hostvars['backend1'].ansible_host }}"
-        master_user: "{{ db.repl_user }}"
-        master_password: "{{ db.repl_password }}"
-        master_log_file: "{{ hostvars['backend1'].master_log_file }}"
-        master_log_pos: "{{ hostvars['backend1'].master_log_pos }}"
-        login_user: root
-        login_password: "{{ db.root_password }}"
+    - name: Configurar SLAVE con CHANGE MASTER TO
+      command: >
+        mysql -u root -p{{ db.root_password }} -e "
+        CHANGE MASTER TO
+        MASTER_HOST='{{ db.master }}',
+        MASTER_USER='repl_user',
+        MASTER_PASSWORD='{{ db.repl_password }}',
+        MASTER_LOG_FILE='{{ (hostvars[groups['backend'].1].master_status.stdout_lines | select('search', 'File') | list | first).split(':')[1] | trim }}',
+        MASTER_LOG_POS={{ (hostvars[groups['backend'].1].master_status.stdout_lines | select('search', 'Position') | list | first).split(':')[1] | trim }};
+        "
+      when: is_slave and hostvars[groups['backend'].1].master_status is defined
 
-    - name: Iniciar réplica
-      mysql_replication:
-        mode: startreplica
-        login_user: root
-        login_password: "{{ db.root_password }}"
+    - name: Iniciar replicación en SLAVE
+      command: mysql -u root -p{{ db.root_password }} -e "START SLAVE;"
+      when: is_slave
+
+    - name: Mostrar estado SLAVE
+      command: mysql -u root -p{{ db.root_password }} -e "SHOW SLAVE STATUS\G"
+      register: slave_status
+      when: is_slave
+
+    - debug:
+        var: slave_status.stdout_lines
+      when: is_slave

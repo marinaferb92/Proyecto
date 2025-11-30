@@ -1,16 +1,11 @@
-upstream django_backend {
-    {% for host in groups['frontend'] %}
-    server {{ hostvars[host].ansible_host }}:80;
-    {% endfor %}
-}
+frontend http_front
+    bind *:80
+    mode http
+    default_backend django_servers
 
-server {
-    listen 80;
-    server_name {{ certbot.domain }};
+backend django_servers
+    mode http
+    balance roundrobin
 
-    location / {
-        proxy_pass http://django_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+    server frontend1 {{ frontend1_ip }}:80 check
+    server frontend2 {{ frontend2_ip }}:80 check

@@ -1,0 +1,127 @@
+from django.contrib import admin
+from . import models
+
+@admin.register(models.Clientes)
+class ClientesAdmin(admin.ModelAdmin):
+    list_display = ("cliente_id", "nombre", "apellido", "telefono", "correo", "origen_cliente")
+    search_fields = ("nombre", "apellido", "dni", "telefono", "correo")
+    ordering = ("cliente_id",)
+
+
+@admin.register(models.CategoriasEmpleados)
+class CategoriasEmpleadosAdmin(admin.ModelAdmin):
+    list_display = ("categoria_id", "nombre")
+
+
+@admin.register(models.Empleados)
+class EmpleadosAdmin(admin.ModelAdmin):
+    list_display = ("empleado_id", "nombre", "apellido", "categoria", "activo")
+    search_fields = ("nombre", "apellido")
+    list_filter = ("categoria", "activo")
+
+
+@admin.register(models.Especialidades)
+class EspecialidadesAdmin(admin.ModelAdmin):
+    list_display = ("especialidad_id", "nombre")
+
+
+@admin.register(models.EmpleadoEspecialidad)
+class EmpleadoEspecialidadAdmin(admin.ModelAdmin):
+    list_display = ("empleado", "especialidad")
+
+
+@admin.register(models.FichasMedicas)
+class FichasMedicasAdmin(admin.ModelAdmin):
+    list_display = ("ficha_id", "cliente", "fecha_actualizacion")
+    search_fields = ("cliente__nombre", "cliente__apellido")
+
+
+@admin.register(models.Salas)
+class SalasAdmin(admin.ModelAdmin):
+    list_display = ("sala_id", "nombre", "tipo", "capacidad")
+    list_filter = ("tipo",)
+
+
+@admin.register(models.CategoriasTratamientos)
+class CategoriasTratamientosAdmin(admin.ModelAdmin):
+    list_display = ("categoria_id", "nombre")
+
+
+@admin.register(models.Tratamientos)
+class TratamientosAdmin(admin.ModelAdmin):
+    list_display = ("tratamiento_id", "nombre", "precio", "duracion_min", "categoria")
+    list_filter = ("categoria",)
+    search_fields = ("nombre",)
+
+
+@admin.register(models.TratamientosPrevios)
+class TratamientosPreviosAdmin(admin.ModelAdmin):
+    list_display = ("cliente", "tratamiento", "fecha_tratamiento")
+    list_filter = ("fecha_tratamiento",)
+
+
+@admin.register(models.Citas)
+class CitasAdmin(admin.ModelAdmin):
+    list_display = ("cita_id", "fecha_cita", "hora_cita", "cliente", "empleado", "estado")
+    list_filter = ("estado", "fecha_cita")
+    search_fields = ("cliente__nombre", "cliente__apellido", "empleado__nombre")
+
+
+@admin.register(models.Pagos)
+class PagosAdmin(admin.ModelAdmin):
+    list_display = ("pago_id", "cita", "metodo_pago", "monto", "fecha_pago")
+    list_filter = ("metodo_pago", "fecha_pago")
+
+
+@admin.register(models.Valoraciones)
+class ValoracionesAdmin(admin.ModelAdmin):
+    list_display = ("valoracion_id", "cita", "puntuacion", "fecha_valoracion")
+    list_filter = ("puntuacion",)
+
+
+@admin.register(models.Proveedores)
+class ProveedoresAdmin(admin.ModelAdmin):
+    list_display = ("proveedor_id", "nombre", "telefono", "correo")
+
+
+@admin.register(models.Inventario)
+class InventarioAdmin(admin.ModelAdmin):
+    list_display = ("item_id", "nombre", "tipo", "stock_actual", "unidad", "proveedor")
+    list_filter = ("tipo",)
+
+
+@admin.register(models.ConsumoMaterial)
+class ConsumoMaterialAdmin(admin.ModelAdmin):
+    list_display = ("cita", "item", "cantidad_usada")
+
+
+@admin.register(models.MovimientosInventario)
+class MovimientosInventarioAdmin(admin.ModelAdmin):
+    list_display = ("movimiento_id", "item", "tipo", "cantidad", "fecha_movimiento")
+    list_filter = ("tipo", "fecha_movimiento")
+
+
+@admin.register(models.CampañasMarketing)
+class CampañasMarketingAdmin(admin.ModelAdmin):
+    list_display = ("campaña_id", "nombre", "canal", "fecha_inicio", "fecha_fin")
+
+
+@admin.register(models.DescuentosPromociones)
+class DescuentosPromocionesAdmin(admin.ModelAdmin):
+    list_display = ("promo_id", "nombre", "tipo", "valor", "fecha_inicio", "fecha_fin")
+
+
+@admin.register(models.CitaPromocion)
+class CitaPromocionAdmin(admin.ModelAdmin):
+    list_display = ("cita", "promo")
+
+
+@admin.register(models.LogsActividad)
+class LogsActividadAdmin(admin.ModelAdmin):
+    list_display = ("log_id", "empleado", "accion", "fecha")
+    list_filter = ("fecha",)
+
+
+@admin.register(models.EstadisticasDiarias)
+class EstadisticasDiariasAdmin(admin.ModelAdmin):
+    list_display = ("fecha", "citas_totales", "citas_realizadas", "citas_canceladas", "ingresos_totales")

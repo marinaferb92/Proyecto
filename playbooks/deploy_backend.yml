@@ -1,46 +1,23 @@
 ---
-- name: Importar SQL de la clínica
+- name: Deploy backend SQL
   hosts: backend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
-    - name: Crear carpeta temporal
-      file:
-        path: /tmp/sql_clinica
-        state: directory
-
-    - name: Copiar SQL structure
+    - name: Copiar SQL
       copy:
-        src: ../sql/clinica_estructura.sql
-        dest: /tmp/sql_clinica/clinica_estructura.sql
+        src: "../sql/"
+        dest: "/home/ubuntu/sql/"
 
-    - name: Copiar SQL base
-      copy:
-        src: ../sql/clinica_datos_base.sql
-        dest: /tmp/sql_clinica/clinica_datos_base.sql
+    - name: Importar estructura
+      shell: "mysql -u root -p{{ db.root_password }} {{ db.name }} < /home/ubuntu/sql/clinica_estructura.sql"
 
-    - name: Copiar SQL demo
-      copy:
-        src: ../sql/clinica_datos_demo.sql
-        dest: /tmp/sql_clinica/clinica_datos_demo.sql
+    - name: Importar datos base
+      shell: "mysql -u root -p{{ db.root_password }} {{ db.name }} < /home/ubuntu/sql/clinica_datos_base.sql"
 
-    - name: Import structure
-      command: >
-        mysql -u root -p{{ db.root_password }} {{ db.name }}
-        --execute="source /tmp/sql_clinica/clinica_estructura.sql"
-      ignore_errors: yes
-
-    - name: Import base data
-      command: >
-        mysql -u root -p{{ db.root_password }} {{ db.name }}
-        --execute="source /tmp/sql_clinica/clinica_datos_base.sql"
-      ignore_errors: yes
-
-    - name: Import demo data
-      command: >
-        mysql -u root -p{{ db.root_password }} {{ db.name }}
-        --execute="source /tmp/sql_clinica/clinica_datos_demo.sql"
-      ignore_errors: yes
+    - name: Importar datos demo
+      shell: "mysql -u root -p{{ db.root_password }} {{ db.name }} < /home/ubuntu/sql/clinica_datos_demo.sql"

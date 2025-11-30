@@ -1,68 +1,52 @@
 ---
-- name: Preparar Backend MySQL (idempotente)
-  hosts: backend
+- name: Deploy Django sincronizado
+  hosts: frontend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
+  vars:
+    project_path: /var/www/clinica_app
+    venv_path: /var/www/clinica_app/venv
+
   tasks:
+    - name: Borrar core
+      file:
+        path: "{{ project_path }}/core"
+        state: absent
 
-    - name: Instalar MySQL + dependencias
-      apt:
-        name:
-          - mysql-server
-          - python3-pymysql
-        update_cache: yes
-        state: present
+    - name: Crear core limpio
+      file:
+        path: "{{ project_path }}/core"
+        state: directory
 
-    - name: Asegurar que MySQL está iniciado
+    - name: Copiar models.py
+      template:
+        src: "../templates/core/core_models.py.j2"
+        dest: "{{ project_path }}/core/models.py"
+
+    - name: Copiar admin.py
+      template:
+        src: "../templates/core/core_admin.py.j2"
+        dest: "{{ project_path }}/core/admin.py"
+
+    - name: Copiar apps.py
+      template:
+        src: "../templates/core/core_apps.py.j2"
+        dest: "{{ project_path }}/core/apps.py"
+
+    - name: Migraciones
+      command: "{{ venv_path }}/bin/python manage.py migrate"
+      args:
+        chdir: "{{ project_path }}"
+
+    - name: Reiniciar gunicorn
       systemd:
-        name: mysql
-        state: started
-        enabled: yes
-
-    - name: Habilitar event_scheduler
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^event_scheduler'
-        line: 'event_scheduler = ON'
-
-    - name: Abrir bind-address
-      lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^bind-address'
-        line: 'bind-address = 0.0.0.0'
-
-    - name: Reiniciar MySQL
-      systemd:
-        name: mysql
+        name: gunicorn
         state: restarted
 
-    - name: Crear base de datos
-      mysql_db:
-        name: "{{ db.name }}"
-        state: present
-        encoding: utf8mb4
-        collation: utf8mb4_unicode_ci
-        login_user: root
-        login_password: "{{ db.root_password }}"
-
-    - name: Crear usuario frontends
-      mysql_user:
-        name: "{{ db.user }}"
-        password: "{{ db.password }}"
-        host: "%"
-        priv: "{{ db.name }}.*:ALL"
-        state: present
-        login_user: root
-        login_password: "{{ db.root_password }}"
-
-    - name: Crear usuario de replicación
-      mysql_user:
-        name: "{{ db.repl_user }}"
-        password: "{{ db.repl_password }}"
-        host: "%"
-        priv: "*.*:REPLICATION SLAVE"
-        state: present
-        login_user: root
-        login_password: "{{ db.root_password }}"
+    - name: Reiniciar nginx
+      systemd:
+        name: nginx
+        state: restarted

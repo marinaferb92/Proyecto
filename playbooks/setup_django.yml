@@ -1,5 +1,5 @@
 ---
-- name: Configurar entorno Django en los frontends
+- name: Configurar Django en servidores frontend
   hosts: frontend
   become: yes
   vars_files:
@@ -7,155 +7,193 @@
 
   tasks:
 
-    ##########################################################
-    # 1. DEPENDENCIAS
-    ##########################################################
-    - name: Instalar dependencias
-      apt:
-        name:
-          - python3
-          - python3-pip
-          - python3-venv
-          - build-essential
-          - python3-dev
-          - default-libmysqlclient-dev
-          - pkg-config
-          - nginx
-        update_cache: yes
-
-    ##########################################################
-    # 2. DIRECTORIO DEL PROYECTO
-    ##########################################################
-    - name: Crear carpeta del proyecto
+    - name: Crear carpeta base del proyecto
       file:
         path: /var/www/clinica_app
         state: directory
-        mode: "0755"
+        owner: www-data
+        group: www-data
+        mode: '0755'
 
-    ##########################################################
-    # 3. VENV
-    ##########################################################
     - name: Crear entorno virtual
       command: python3 -m venv /var/www/clinica_app/venv
       args:
         creates: /var/www/clinica_app/venv
 
-    ##########################################################
-    # 4. REQUIREMENTS
-    ##########################################################
-    - name: Copiar requirements.txt
+    - name: Instalar pip en el entorno virtual
+      pip:
+        name: pip
+        state: latest
+        virtualenv: /var/www/clinica_app/venv
+
+    - name: Copiar archivo requirements.txt
       copy:
         src: ../templates/requirements.txt
         dest: /var/www/clinica_app/requirements.txt
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Instalar paquetes Python
-      command: /var/www/clinica_app/venv/bin/pip install -r /var/www/clinica_app/requirements.txt
+    - name: Instalar requirements dentro del entorno virtual
+      pip:
+        requirements: /var/www/clinica_app/requirements.txt
+        virtualenv: /var/www/clinica_app/venv
 
-    ##########################################################
-    # 5. CREAR PROYECTO DJANGO
-    ##########################################################
-    - name: Crear proyecto Django si no existe
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python -m django startproject clinica .
-        chdir: /var/www/clinica_app
+    - name: Crear estructura Django (si no existe)
+      command: /var/www/clinica_app/venv/bin/django-admin startproject clinica /var/www/clinica_app
       args:
-        creates: /var/www/clinica_app/manage.py
+        creates: /var/www/clinica_app/clinica
 
-    ##########################################################
-    # 6. CREAR CORE
-    ##########################################################
-    - name: Crear app core si no existe
-      command:
-        cmd: /var/www/clinica_app/venv/bin/python manage.py startapp core
-        chdir: /var/www/clinica_app
+    - name: Crear app Core (si no existe)
+      command: /var/www/clinica_app/venv/bin/python manage.py startapp core
       args:
-        creates: /var/www/clinica_app/core/apps.py
+        chdir: /var/www/clinica_app
+        creates: /var/www/clinica_app/core
 
-    ##########################################################
-    # 7. LIMPIAR Y RECREAR MIGRACIONES
-    ##########################################################
-    - name: Borrar migraciones antiguas
-      file:
-        path: /var/www/clinica_app/core/migrations
-        state: absent
+    ###############################
+    # COPIA DE TEMPLATES DJANGO
+    ###############################
 
-    - name: Crear carpeta migrations vacía
-      file:
-        path: /var/www/clinica_app/core/migrations
-        state: directory
-
-    - name: Crear __init__.py en migrations
-      file:
-        path: /var/www/clinica_app/core/migrations/__init__.py
-        state: touch
-
-    ##########################################################
-    # 8. COPIAR PLANTILLAS (MODELS, VIEWS, URLS, TEMPLATES)
-    ##########################################################
     - name: Copiar settings.py
       template:
         src: ../templates/django_settings.py.j2
         dest: /var/www/clinica_app/clinica/settings.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
     - name: Copiar urls.py del proyecto
       template:
         src: ../templates/django_urls.py.j2
         dest: /var/www/clinica_app/clinica/urls.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar wsgi.py
+    - name: Copiar apps.py de Core
       template:
-        src: ../templates/django_wsgi.py.j2
-        dest: /var/www/clinica_app/clinica/wsgi.py
+        src: ../templates/core/core_apps.py.j2
+        dest: /var/www/clinica_app/core/apps.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar modelos core
+    - name: Copiar models.py de Core
       template:
-        src: ../templates/core_models.py.j2
+        src: ../templates/core/core_models.py.j2
         dest: /var/www/clinica_app/core/models.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar views core
+    - name: Copiar admin.py de Core
       template:
-        src: ../templates/core_views.py.j2
-        dest: /var/www/clinica_app/core/views.py
+        src: ../templates/core/core_admin.py.j2
+        dest: /var/www/clinica_app/core/admin.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar urls core
+    - name: Copiar views_public.py
       template:
-        src: ../templates/core_urls.py.j2
-        dest: /var/www/clinica_app/core/urls.py
+        src: ../templates/core_views_public.py.j2
+        dest: /var/www/clinica_app/core/views_public.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar forms core
+    - name: Copiar urls_public.py
       template:
-        src: ../templates/core_forms.py.j2
-        dest: /var/www/clinica_app/core/forms.py
+        src: ../templates/core_urls_public.py.j2
+        dest: /var/www/clinica_app/core/urls_public.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
 
-    - name: Copiar base.html
-      copy:
-        src: ../templates/base.html
-        dest: /var/www/clinica_app/templates/base.html
+    ###############################
+    # TEMPLATES WEB PÚBLICA
+    ###############################
 
-    - name: Copiar dashboard
-      copy:
-        src: ../templates/core_dashboard.html
-        dest: /var/www/clinica_app/templates/core_dashboard.html
-
-    - name: Asegurar que la carpeta de templates existe
+    - name: Crear carpeta templates
       file:
-        path: /var/www/clinica_app/templates
+        path: /var/www/clinica_app/templates_public
         state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
 
-    ##########################################################
-    # 9. COPIAR SERVICIOS SYSTEMD
-    ##########################################################
-    - name: Copiar servicio WSGI
+    - name: Copiar templates públicos
+      copy:
+        src: ../templates/templates_public/
+        dest: /var/www/clinica_app/templates_public/
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      notify: restart gunicorn
+
+    ###############################
+    # MIGRACIONES
+    ###############################
+
+    - name: Ejecutar migraciones
+      command: /var/www/clinica_app/venv/bin/python manage.py migrate
+      args:
+        chdir: /var/www/clinica_app
+
+    ###############################
+    # STATIC
+    ###############################
+
+    - name: Recopilar archivos estáticos
+      command: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
+      args:
+        chdir: /var/www/clinica_app
+
+    ###############################
+    # GUNICORN
+    ###############################
+
+    - name: Copiar servicio Gunicorn
       template:
-        src: ../templates/django_wsgi.service.j2
-        dest: /etc/systemd/system/django_wsgi.service
-      notify:
-        - Reload Systemd
+        src: ../templates/django_gunicorn.service.j2
+        dest: /etc/systemd/system/gunicorn_clinica.service
+        mode: '0644'
 
-    ##########################################################
-    # HANDLERS
-    ##########################################################
-  handlers:
-    - name: Reload Systemd
+    - name: Reload systemd
       systemd:
         daemon_reload: yes
+
+    - name: Iniciar Gunicorn
+      systemd:
+        name: gunicorn_clinica
+        state: started
+        enabled: yes
+
+    ###############################
+    # NGINX
+    ###############################
+
+    - name: Copiar configuración Nginx
+      template:
+        src: ../templates/django_nginx.conf.j2
+        dest: /etc/nginx/sites-available/clinica
+        mode: '0644'
+
+    - name: Activar sitio
+      file:
+        src: /etc/nginx/sites-available/clinica
+        dest: /etc/nginx/sites-enabled/clinica
+        state: link
+        force: true
+
+    - name: Reiniciar nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+  handlers:
+    - name: restart gunicorn
+      systemd:
+        name: gunicorn_clinica
+        state: restarted
