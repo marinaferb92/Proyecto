@@ -1,0 +1,10 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h1>Borrar cita</h1>
+<p>¿Seguro que quieres borrar la cita de <strong>{{ appointment.patient }}</strong> con <strong>{{ appointment.doctor }}</strong> el {{ appointment.date }} a las {{ appointment.time }}?</p>
+<form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Sí, borrar</button>
+    <a class="btn btn-secondary" href="{% url 'core:appointment_list' %}">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,5 +1,5 @@
 ---
-- name: Configurar Django en servidores frontend
+- name: Preparar entorno Django en frontends
   hosts: frontend
   become: yes
   vars_files:
@@ -7,193 +7,127 @@
 
   tasks:
 
-    - name: Crear carpeta base del proyecto
+    ##############################################################
+    # 0) Dependencias
+    ##############################################################
+    - name: Instalar paquetes necesarios
+      apt:
+        name:
+          - python3-venv
+          - python3-pip
+          - python3-dev
+          - build-essential
+          - libmariadb-dev
+          - libmariadb-dev-compat
+          - pkg-config
+          - nginx
+        state: present
+        update_cache: yes
+
+    ##############################################################
+    # 1) Estructura del proyecto
+    ##############################################################
+    - name: Crear carpeta base del proyecto Django
       file:
-        path: /var/www/clinica_app
+        path: "{{ django_base_dir }}"
         state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
+        owner: "{{ django_user }}"
+        group: "{{ django_group }}"
+        mode: "0755"
 
     - name: Crear entorno virtual
-      command: python3 -m venv /var/www/clinica_app/venv
+      command: "python3 -m venv {{ django_venv_dir }}"
       args:
-        creates: /var/www/clinica_app/venv
+        creates: "{{ django_venv_dir }}/bin/activate"
 
-    - name: Instalar pip en el entorno virtual
-      pip:
-        name: pip
-        state: latest
-        virtualenv: /var/www/clinica_app/venv
-
-    - name: Copiar archivo requirements.txt
+    ##############################################################
+    # 2) Instalar dependencias
+    ##############################################################
+    - name: Copiar requirements.txt
       copy:
-        src: ../templates/requirements.txt
-        dest: /var/www/clinica_app/requirements.txt
-        owner: www-data
-        group: www-data
-        mode: '0644'
+        src: "{{ templates_dir }}/requirements.txt"
+        dest: "{{ django_base_dir }}/requirements.txt"
 
-    - name: Instalar requirements dentro del entorno virtual
+    - name: Instalar dependencias Python
       pip:
-        requirements: /var/www/clinica_app/requirements.txt
-        virtualenv: /var/www/clinica_app/venv
+        requirements: "{{ django_base_dir }}/requirements.txt"
+        virtualenv: "{{ django_venv_dir }}"
+        virtualenv_python: python3
 
-    - name: Crear estructura Django (si no existe)
-      command: /var/www/clinica_app/venv/bin/django-admin startproject clinica /var/www/clinica_app
-      args:
-        creates: /var/www/clinica_app/clinica
+    ##############################################################
+    # 3) Copiar código Django completo
+    ##############################################################
+    - name: Copiar código Django al servidor
+      copy:
+        src: "{{ templates_dir }}/"
+        dest: "{{ django_base_dir }}/"
+        owner: "{{ django_user }}"
+        group: "{{ django_group }}"
+        mode: "0755"
+      notify: Restart gunicorn
 
-    - name: Crear app Core (si no existe)
-      command: /var/www/clinica_app/venv/bin/python manage.py startapp core
-      args:
-        chdir: /var/www/clinica_app
-        creates: /var/www/clinica_app/core
-
-    ###############################
-    # COPIA DE TEMPLATES DJANGO
-    ###############################
-
-    - name: Copiar settings.py
-      template:
-        src: ../templates/django_settings.py.j2
-        dest: /var/www/clinica_app/clinica/settings.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar urls.py del proyecto
-      template:
-        src: ../templates/django_urls.py.j2
-        dest: /var/www/clinica_app/clinica/urls.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar apps.py de Core
-      template:
-        src: ../templates/core/core_apps.py.j2
-        dest: /var/www/clinica_app/core/apps.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar models.py de Core
-      template:
-        src: ../templates/core/core_models.py.j2
-        dest: /var/www/clinica_app/core/models.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar admin.py de Core
-      template:
-        src: ../templates/core/core_admin.py.j2
-        dest: /var/www/clinica_app/core/admin.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar views_public.py
-      template:
-        src: ../templates/core_views_public.py.j2
-        dest: /var/www/clinica_app/core/views_public.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    - name: Copiar urls_public.py
-      template:
-        src: ../templates/core_urls_public.py.j2
-        dest: /var/www/clinica_app/core/urls_public.py
-        owner: www-data
-        group: www-data
-        mode: '0644'
-
-    ###############################
-    # TEMPLATES WEB PÚBLICA
-    ###############################
-
-    - name: Crear carpeta templates
+    ##############################################################
+    # 4) Static y Media
+    ##############################################################
+    - name: Crear carpeta static
       file:
-        path: /var/www/clinica_app/templates_public
+        path: "{{ django_static_root }}"
         state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
+        owner: "{{ django_user }}"
+        group: "{{ django_group }}"
 
-    - name: Copiar templates públicos
-      copy:
-        src: ../templates/templates_public/
-        dest: /var/www/clinica_app/templates_public/
-        owner: www-data
-        group: www-data
-        mode: '0644'
-      notify: restart gunicorn
+    - name: Crear carpeta media
+      file:
+        path: "{{ django_media_root }}"
+        state: directory
+        owner: "{{ django_user }}"
+        group: "{{ django_group }}"
 
-    ###############################
-    # MIGRACIONES
-    ###############################
-
-    - name: Ejecutar migraciones
-      command: /var/www/clinica_app/venv/bin/python manage.py migrate
+    - name: Ejecutar collectstatic
+      command: >
+        {{ django_venv_dir }}/bin/python manage.py collectstatic --noinput
       args:
-        chdir: /var/www/clinica_app
+        chdir: "{{ django_base_dir }}"
 
-    ###############################
-    # STATIC
-    ###############################
-
-    - name: Recopilar archivos estáticos
-      command: /var/www/clinica_app/venv/bin/python manage.py collectstatic --noinput
-      args:
-        chdir: /var/www/clinica_app
-
-    ###############################
-    # GUNICORN
-    ###############################
-
+    ##############################################################
+    # 5) Gunicorn
+    ##############################################################
     - name: Copiar servicio Gunicorn
       template:
-        src: ../templates/django_gunicorn.service.j2
-        dest: /etc/systemd/system/gunicorn_clinica.service
-        mode: '0644'
+        src: "{{ templates_dir }}/django_gunicorn.service.j2"
+        dest: /etc/systemd/system/gunicorn.service
 
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
+    - name: Recargar systemd
+      command: systemctl daemon-reload
 
-    - name: Iniciar Gunicorn
+    - name: Habilitar y arrancar Gunicorn
       systemd:
-        name: gunicorn_clinica
-        state: started
+        name: gunicorn
         enabled: yes
+        state: restarted
 
-    ###############################
-    # NGINX
-    ###############################
-
-    - name: Copiar configuración Nginx
+    ##############################################################
+    # 6) Nginx
+    ##############################################################
+    - name: Copiar config Nginx
       template:
-        src: ../templates/django_nginx.conf.j2
+        src: "{{ templates_dir }}/django_nginx.conf.j2"
         dest: /etc/nginx/sites-available/clinica
-        mode: '0644'
 
     - name: Activar sitio
       file:
         src: /etc/nginx/sites-available/clinica
         dest: /etc/nginx/sites-enabled/clinica
         state: link
-        force: true
+        force: yes
 
-    - name: Reiniciar nginx
+    - name: Reiniciar Nginx
       systemd:
         name: nginx
         state: restarted
-        enabled: yes
 
   handlers:
-    - name: restart gunicorn
+    - name: Restart gunicorn
       systemd:
-        name: gunicorn_clinica
+        name: gunicorn
         state: restarted

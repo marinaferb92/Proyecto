@@ -1,0 +1,30 @@
+---
+- name: Configurar clientes NFS
+  hosts: frontend
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Instalar NFS client
+      apt:
+        name: nfs-common
+        state: present
+        update_cache: yes
+
+    - name: Crear punto de montaje
+      file:
+        path: /var/www/clinica_shared
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0775'
+
+    - name: Montar NFS
+      mount:
+        path: "{{ django_media_root }}"
+        src: "{{ nfs_server }}:{{ nfs_export_dir }}"
+        fstype: nfs
+        opts: defaults
+        state: mounted
+

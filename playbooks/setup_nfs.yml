@@ -1,0 +1,45 @@
+---
+- name: Configurar servidor NFS para media de Django
+  hosts: nfs
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+    - name: Instalar paquetes NFS server
+      apt:
+        name:
+          - nfs-kernel-server
+        state: present
+        update_cache: yes
+
+    - name: Crear carpeta exportada para media
+      file:
+        path: "{{ nfs_export_dir }}"
+        state: directory
+        owner: "{{ django_user }}"
+        group: "{{ django_group }}"
+        mode: "0775"
+
+    - name: Crear carpeta de config de exports si no existe
+      file:
+        path: /etc/exports.d
+        state: directory
+        mode: "0755"
+
+    - name: Copiar configuración de export NFS
+      template:
+        src: "{{ templates_dir }}/nfs/clinica.exports.j2"
+        dest: /etc/exports.d/clinica.exports
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Recargar exports
+      command: exportfs -ra
+
+    - name: Habilitar y arrancar nfs-kernel-server
+      systemd:
+        name: nfs-kernel-server
+        enabled: yes
+        state: started

@@ -1,0 +1,104 @@
+from django.core.management.base import BaseCommand
+from django.contrib.auth.models import User
+from django.db import transaction
+from core.models import Patient, Doctor, Appointment, StockItem
+from datetime import datetime, timedelta, time
+import random
+
+class Command(BaseCommand):
+    help = "Carga datos de demo para la clínica"
+
+    @transaction.atomic
+    def handle(self, *args, **kwargs):
+
+        self.stdout.write(self.style.WARNING("Cargando DEMO..."))
+
+        # -------------------------------
+        # Usuarios + doctores
+        # -------------------------------
+
+        demo_users = [
+            ("doctor1", "DoctorDemo.123", "Medicina estética"),
+            ("doctor2", "DoctorDemo.123", "Dermatología"),
+        ]
+
+        doctors = []
+
+        for username, pwd, specialty in demo_users:
+            user, created = User.objects.get_or_create(username=username)
+            if created:
+                user.set_password(pwd)
+                user.first_name = username.capitalize()
+                user.save()
+
+            doctor, _ = Doctor.objects.get_or_create(
+                user=user,
+                defaults={"specialty": specialty},
+            )
+            doctors.append(doctor)
+
+        # -------------------------------
+        # Patients demo
+        # -------------------------------
+
+        patients_data = [
+            ("Ana", "López", "12345678A"),
+            ("Carlos", "Martínez", "22223333B"),
+            ("Lucía", "Fernández", "99887766C"),
+            ("Miguel", "Santos", "55443322D"),
+        ]
+
+        patients = []
+        for f, l, dni in patients_data:
+            p, _ = Patient.objects.get_or_create(
+                dni=dni,
+                defaults={
+                    "first_name": f,
+                    "last_name": l,
+                    "phone": "600000000",
+                    "email": f"{f.lower()}@demo.com",
+                },
+            )
+            patients.append(p)
+
+        # -------------------------------
+        # Stock demo
+        # -------------------------------
+
+        stock_items = [
+            ("Agujas 30G", "AG30", 200, 50),
+            ("Guantes", "GUA01", 500, 100),
+            ("Jeringas 2ml", "JER02", 150, 30),
+            ("Viales Botox", "BOTX1", 20, 5),
+        ]
+
+        for name, sku, qty, min_qty in stock_items:
+            StockItem.objects.get_or_create(
+                sku=sku,
+                defaults={
+                    "name": name,
+                    "quantity": qty,
+                    "min_quantity": min_qty,
+                },
+            )
+
+        # -------------------------------
+        # Citas demo
+        # -------------------------------
+
+        for _ in range(20):
+            patient = random.choice(patients)
+            doctor = random.choice(doctors)
+
+            appt_date = datetime.now().date() + timedelta(days=random.randint(0, 10))
+            appt_time = time(random.randint(9, 19), random.choice([0, 30]))
+
+            Appointment.objects.get_or_create(
+                patient=patient,
+                doctor=doctor,
+                date=appt_date,
+                time=appt_time,
+                defaults={"reason": "Consulta demo", "status": "scheduled"},
+            )
+
+        self.stdout.write(self.style.SUCCESS("DEMO cargado correctamente."))

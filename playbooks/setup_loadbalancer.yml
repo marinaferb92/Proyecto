@@ -1,31 +1,38 @@
 ---
-- name: Setup Load Balancer
+- name: Configurar Nginx como load balancer
   hosts: loadbalancer
   become: yes
-
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-
     - name: Instalar nginx
       apt:
         name: nginx
         state: present
+        update_cache: yes
 
-    - name: Copiar config de load balancer
+    - name: Copiar config del load balancer
       template:
-        src: "../templates/loadbalancer.conf.j2"
-        dest: "/etc/nginx/sites-available/clinica_lb.conf"
+        src: "{{ templates_dir }}/loadbalancer.conf.j2"
+        dest: "{{ lb_nginx_conf_path }}"
+        owner: root
+        group: root
+        mode: "0644"
 
-    - name: Activar LB
+    - name: Eliminar default de nginx si existe
       file:
-        src: /etc/nginx/sites-available/clinica_lb.conf
-        dest: /etc/nginx/sites-enabled/clinica_lb.conf
-        state: link
-      ignore_errors: yes
+        path: /etc/nginx/sites-enabled/default
+        state: absent
 
-    - name: Reiniciar nginx
+    - name: Probar configuración de nginx
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      failed_when: nginx_test.rc != 0
+
+    - name: Recargar nginx
       systemd:
         name: nginx
         state: restarted
+        enabled: yes

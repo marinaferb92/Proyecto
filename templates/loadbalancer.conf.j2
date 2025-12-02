@@ -1,11 +1,15 @@
-frontend http_front
-    bind *:80
-    mode http
-    default_backend django_servers
+upstream django_upstream {
+    server frontend1:80;
+    server frontend2:80;
+}
 
-backend django_servers
-    mode http
-    balance roundrobin
+server {
+    listen 80;
+    server_name _;
 
-    server frontend1 {{ frontend1_ip }}:80 check
-    server frontend2 {{ frontend2_ip }}:80 check
+    location / {
+        proxy_pass http://django_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}

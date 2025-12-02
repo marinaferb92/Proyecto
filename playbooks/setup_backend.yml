@@ -1,52 +1,91 @@
 ---
-- name: Deploy Django sincronizado
-  hosts: frontend
+- name: Instalar y configurar MariaDB en los nodos backend
+  hosts: backend
   become: yes
 
   vars_files:
     - ../vars/variables.yml
 
-  vars:
-    project_path: /var/www/clinica_app
-    venv_path: /var/www/clinica_app/venv
+  pre_tasks:
+    - name: Instalar dependencias
+      apt:
+        name:
+          - python3-pymysql
+          - mariadb-server
+        state: present
+        update_cache: yes
 
   tasks:
-    - name: Borrar core
-      file:
-        path: "{{ project_path }}/core"
-        state: absent
 
-    - name: Crear core limpio
-      file:
-        path: "{{ project_path }}/core"
-        state: directory
-
-    - name: Copiar models.py
-      template:
-        src: "../templates/core/core_models.py.j2"
-        dest: "{{ project_path }}/core/models.py"
-
-    - name: Copiar admin.py
-      template:
-        src: "../templates/core/core_admin.py.j2"
-        dest: "{{ project_path }}/core/admin.py"
-
-    - name: Copiar apps.py
-      template:
-        src: "../templates/core/core_apps.py.j2"
-        dest: "{{ project_path }}/core/apps.py"
-
-    - name: Migraciones
-      command: "{{ venv_path }}/bin/python manage.py migrate"
-      args:
-        chdir: "{{ project_path }}"
-
-    - name: Reiniciar gunicorn
+    #-------------------------------------------------------------
+    # 1. Asegurar MariaDB
+    #-------------------------------------------------------------
+    - name: Asegurar que MariaDB está arrancado
       systemd:
-        name: gunicorn
-        state: restarted
+        name: mariadb
+        state: started
+        enabled: yes
 
-    - name: Reiniciar nginx
+    #-------------------------------------------------------------
+    # 2. Configurar bind-address
+    #-------------------------------------------------------------
+    - name: Configurar bind-address a 0.0.0.0
+      lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address'
+        line: "bind-address = 0.0.0.0"
+      notify: Restart MariaDB
+
+    #-------------------------------------------------------------
+    # 3. Crear usuario admin SQL
+    #-------------------------------------------------------------
+    - name: Crear usuario administrador SQL
+      community.mysql.mysql_user:
+        name: "{{ db_admin_user }}"
+        password: "{{ db_admin_password }}"
+        host: "localhost"
+        priv: "*.*:ALL,GRANT"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        state: present
+
+    #-------------------------------------------------------------
+    # 4. Crear /root/.my.cnf
+    #-------------------------------------------------------------
+    - name: Crear /root/.my.cnf
+      copy:
+        dest: /root/.my.cnf
+        content: |
+          [client]
+          user={{ db_admin_user }}
+          password={{ db_admin_password }}
+        mode: "0600"
+
+    #-------------------------------------------------------------
+    # 5. Crear BD (solo si no existe)
+    #-------------------------------------------------------------
+    - name: Crear base de datos
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+
+    #-------------------------------------------------------------
+    # 6. Crear usuario frontend
+    #-------------------------------------------------------------
+    - name: Crear usuario MySQL para frontends
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        host: "{{ item }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+      loop:
+        - "{{ hostvars['frontend1'].ansible_host }}"
+        - "{{ hostvars['frontend2'].ansible_host }}"
+
+  handlers:
+    - name: Restart MariaDB
       systemd:
-        name: nginx
+        name: mariadb
         state: restarted

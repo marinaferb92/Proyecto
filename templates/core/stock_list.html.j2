@@ -1,0 +1,40 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h1>Stock</h1>
+<a href="{% url 'core:stock_create' %}" class="btn btn-success mb-3">Nuevo producto</a>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>Producto</th>
+        <th>SKU</th>
+        <th>Cantidad</th>
+        <th>Mínimo</th>
+        <th>Alerta</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in items %}
+        <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.sku }}</td>
+            <td>{{ s.quantity }}</td>
+            <td>{{ s.min_quantity }}</td>
+            <td>
+                {% if s.quantity <= s.min_quantity %}
+                    <span class="badge bg-danger">Bajo stock</span>
+                {% else %}
+                    <span class="badge bg-success">OK</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'core:stock_update' s.pk %}" class="btn btn-sm btn-primary">Editar</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6">No hay productos en el stock.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
