@@ -1,60 +1,69 @@
 ---
-- name: Desplegar aplicación Django
-  hosts: frontends
+- name: Desplegar cambios Django rápidamente
+  hosts: frontend
   become: yes
-
-  vars:
-    django_dir: /var/www/clinica_app
-    project_name: clinica
-    venv_dir: "{{ django_dir }}/venv"
+  vars_files:
+    - "../vars/variables.yml"
 
   tasks:
 
-    - name: Sincronizar código fuente del proyecto
+    # ------------------------------------------------------
+    # 1. Copiar HTML / management / estáticos del core
+    # ------------------------------------------------------
+    - name: Copiar archivos no-Python del core
       synchronize:
-        src: "../src/{{ project_name }}/"
-        dest: "{{ django_dir }}/{{ project_name }}/"
-        delete: yes
+        src: "{{ playbook_dir }}/templates/core/"
+        dest: "{{ django_base_dir }}/core/"
         recursive: yes
+        delete: no
+        rsync_opts:
+          - "--exclude=*.py.j2"
+          - "--exclude=urls.py.j2"
 
-    - name: Copiar templates de la app (core)
+    # ------------------------------------------------------
+    # 2. Renderizar archivos Python del core
+    # ------------------------------------------------------
+    - name: Renderizar archivos Python de core
       template:
-        src: "../templates/core/{{ item }}"
-        dest: "{{ django_dir }}/core/{{ item | regex_replace('.j2','') }}"
+        src: "{{ playbook_dir }}/templates/core/{{ item }}.j2"
+        dest: "{{ django_base_dir }}/core/{{ item }}"
+        mode: "0644"
       loop:
-        - models.py.j2
-        - views.py.j2
-        - urls.py.j2
-        - forms.py.j2
-        - admin.py.j2
-        - templates/base.html.j2
-        - templates/clientes_list.html.j2
-        - templates/clientes_detail.html.j2
-        - templates/inventario_list.html.j2
-        - templates/citas_list.html.j2
+        - views.py
+        - models.py
+        - forms.py
+        - admin.py
+      notify: Restart gunicorn
 
-    - name: Ejecutar migrate
-      command: "{{ venv_dir }}/bin/python manage.py migrate"
+    # ------------------------------------------------------
+    # 3. Renderizar urls.py
+    # ------------------------------------------------------
+    - name: Renderizar urls.py del core
+      template:
+        src: "{{ playbook_dir }}/templates/core/urls.py.j2"
+        dest: "{{ django_base_dir }}/core/urls.py"
+      notify: Restart gunicorn
+
+    # ------------------------------------------------------
+    # 4. Migraciones
+    # ------------------------------------------------------
+    - name: Ejecutar migraciones
+      command: "{{ django_venv }}/bin/python3 manage.py migrate --noinput"
       args:
-        chdir: "{{ django_dir }}"
+        chdir: "{{ django_base_dir }}"
+      notify: Restart gunicorn
 
-    - name: Crear usuario superadmin si no existe
-      command: >
-        {{ venv_dir }}/bin/python manage.py shell -c
-        "from django.contrib.auth import get_user_model;
-         User=get_user_model();
-         User.objects.filter(username='admin').exists()
-         or User.objects.create_superuser('admin','admin@example.com','admin123')"
+    # ------------------------------------------------------
+    # 5. Actualizar static
+    # ------------------------------------------------------
+    - name: Actualizar staticfiles
+      command: "{{ django_venv }}/bin/python3 manage.py collectstatic --noinput"
       args:
-        chdir: "{{ django_dir }}"
+        chdir: "{{ django_base_dir }}"
+      notify: Restart gunicorn
 
-    - name: Ejecutar seed_demo (si existe)
-      command: "{{ venv_dir }}/bin/python manage.py seed_demo"
-      args:
-        chdir: "{{ django_dir }}"
-      ignore_errors: yes
-
-    - name: Reiniciar Gunicorn
+  handlers:
+    - name: Restart gunicorn
       systemd:
-        name: gunicorn_clinica
+        name: gunicorn
         state: restarted

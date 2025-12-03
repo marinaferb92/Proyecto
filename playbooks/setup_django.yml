@@ -1,106 +1,154 @@
 ---
 - name: Configurar entorno Django en frontend
-  hosts: frontends
+  hosts: frontend
   become: yes
-
-  vars:
-    django_dir: /var/www/clinica_app
-    project_name: clinica
-    project_dir: "{{ django_dir }}/{{ project_name }}"
-    venv_dir: "{{ django_dir }}/venv"
+  vars_files:
+    - "../vars/variables.yml"
 
   tasks:
 
-    - name: Instalar dependencias del sistema para mysqlclient
+    # ------------------------------------------------------
+    # 1. Dependencias del sistema
+    # ------------------------------------------------------
+    - name: Instalar dependencias del sistema
       apt:
         name:
-          - pkg-config
-          - build-essential
+          - python3-dev
+          - python3-pip
+          - python3-venv
           - default-libmysqlclient-dev
+          - build-essential
         state: present
         update_cache: yes
 
+    # ------------------------------------------------------
+    # 2. Crear base del proyecto
+    # ------------------------------------------------------
     - name: Crear carpeta base del proyecto
       file:
-        path: "{{ django_dir }}"
+        path: "{{ django_base_dir }}"
         state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
 
+    # ------------------------------------------------------
+    # 3. Crear entorno virtual
+    # ------------------------------------------------------
     - name: Crear entorno virtual
-      command: python3 -m venv "{{ venv_dir }}"
+      command: "python3 -m venv {{ django_venv }}"
       args:
-        creates: "{{ venv_dir }}/bin/activate"
+        creates: "{{ django_venv }}/bin/activate"
 
+    # ------------------------------------------------------
+    # 4. requirements.txt desde plantilla
+    # ------------------------------------------------------
     - name: Generar requirements.txt
       template:
-        src: "../templates/requirements.txt.j2"
-        dest: "{{ django_dir }}/requirements.txt"
-        mode: "0644"
+        src: "requirements.txt.j2"
+        dest: "{{ django_base_dir }}/requirements.txt"
 
-    - name: Instalar paquetes Python del proyecto
-      command: "{{ venv_dir }}/bin/pip install -r {{ django_dir }}/requirements.txt"
+    # ------------------------------------------------------
+    # 5. Instalar dependencias pip
+    # ------------------------------------------------------
+    - name: Instalar paquetes Python
+      pip:
+        requirements: "{{ django_base_dir }}/requirements.txt"
+        virtualenv: "{{ django_venv }}"
 
-    - name: Comprobar si el proyecto Django ya existe
+    # ------------------------------------------------------
+    # 6. Proyecto Django
+    # ------------------------------------------------------
+    - name: Comprobar si el proyecto Django existe
       stat:
-        path: "{{ project_dir }}/manage.py"
-      register: project_exists
+        path: "{{ django_base_dir }}/manage.py"
+      register: django_project
 
     - name: Crear proyecto Django si no existe
-      command: "{{ venv_dir }}/bin/django-admin startproject {{ project_name }} {{ django_dir }}"
-      when: not project_exists.stat.exists
+      command: "{{ django_venv }}/bin/django-admin startproject {{ django_project_name }} {{ django_base_dir }}"
+      when: not django_project.stat.exists
 
-    - name: Generar settings.py
+    # ------------------------------------------------------
+    # 7. Aplicar plantillas del proyecto
+    # ------------------------------------------------------
+    - name: Crear settings.py
       template:
-        src: "../templates/django_settings.py.j2"
-        dest: "{{ project_dir }}/settings.py"
-        owner: www-data
-        group: www-data
-        mode: "0644"
+        src: "django_settings.py.j2"
+        dest: "{{ django_base_dir }}/{{ django_project_name }}/settings.py"
 
-    - name: Generar urls.py
+    - name: Crear urls.py
       template:
-        src: "../templates/django_urls.py.j2"
-        dest: "{{ project_dir }}/urls.py"
-        mode: "0644"
+        src: "django_urls.py.j2"
+        dest: "{{ django_base_dir }}/{{ django_project_name }}/urls.py"
 
-    - name: Generar wsgi.py
+    - name: Crear wsgi.py
       template:
-        src: "../templates/django_wsgi.py.j2"
-        dest: "{{ project_dir }}/wsgi.py"
-        mode: "0644"
+        src: "django_wsgi.py.j2"
+        dest: "{{ django_base_dir }}/{{ django_project_name }}/wsgi.py"
 
-    - name: Crear servicio de Gunicorn
+    # ------------------------------------------------------
+    # 8. Instalar la app core (HTML, commands + código Python)
+    # ------------------------------------------------------
+
+    - name: Crear carpeta core en /var/www/clinica_app/core
+      file:
+        path: "{{ django_base_dir }}/core"
+        state: directory
+
+    - name: Copiar archivos no-Python de core
+      synchronize:
+        src: "{{ playbook_dir }}/templates/core/"
+        dest: "{{ django_base_dir }}/core/"
+        recursive: yes
+        delete: no
+        rsync_opts:
+          - "--exclude=*.py.j2"
+          - "--exclude=urls.py.j2"
+
+    - name: Renderizar archivos Python del core
       template:
-        src: "../templates/django_gunicorn.service.j2"
-        dest: "/etc/systemd/system/gunicorn_clinica.service"
-        mode: "0644"
+        src: "{{ playbook_dir }}/templates/core/{{ item }}.j2"
+        dest: "{{ django_base_dir }}/core/{{ item }}"
+      loop:
+        - views.py
+        - models.py
+        - forms.py
+        - admin.py
+
+    - name: Renderizar urls.py del core
+      template:
+        src: "{{ playbook_dir }}/templates/core/urls.py.j2"
+        dest: "{{ django_base_dir }}/core/urls.py"
+
+    - name: Asegurar __init__.py
+      file:
+        path: "{{ django_base_dir }}/core/__init__.py"
+        state: touch
+
+    # ------------------------------------------------------
+    # 9. Migraciones + static
+    # ------------------------------------------------------
+    - name: Ejecutar migraciones
+      command: "{{ django_venv }}/bin/python3 manage.py migrate --noinput"
+      args:
+        chdir: "{{ django_base_dir }}"
+
+    - name: Ejecutar collectstatic
+      command: "{{ django_venv }}/bin/python3 manage.py collectstatic --noinput"
+      args:
+        chdir: "{{ django_base_dir }}"
+
+    # ------------------------------------------------------
+    # 10. Gunicorn
+    # ------------------------------------------------------
+    - name: Instalar servicio Gunicorn
+      template:
+        src: "django_gunicorn.service.j2"
+        dest: "/etc/systemd/system/gunicorn.service"
 
     - name: Recargar systemd
-      command: systemctl daemon-reload
-
-    - name: Habilitar y arrancar Gunicorn
       systemd:
-        name: gunicorn_clinica
+        daemon_reload: yes
+
+    - name: Habilitar y reiniciar Gunicorn
+      systemd:
+        name: gunicorn
         enabled: yes
-        state: started
-
-    - name: Generar configuración de Nginx
-      template:
-        src: "../templates/django_nginx.conf.j2"
-        dest: "/etc/nginx/sites-available/clinica"
-        mode: "0644"
-
-    - name: Activar configuración de Nginx
-      file:
-        src: "/etc/nginx/sites-available/clinica"
-        dest: "/etc/nginx/sites-enabled/clinica"
-        state: link
-      notify: Restart nginx
-
-  handlers:
-    - name: Restart nginx
-      service:
-        name: nginx
         state: restarted

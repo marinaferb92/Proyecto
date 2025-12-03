@@ -1,30 +1,44 @@
 # =========================
 # BACKEND / DATABASE
 # =========================
+
+# Variables base (se siguen usando en setup_backend.yml)
 db_name: clinica_db
 db_user: clinica_user
 db_password: "ClinicaPass123!"
 
-# Root password
-db_root_password: "RootDB123!"
-
-# Usuario para Ansible (administrador)
+db_root_password: "RootDB123!"      # para MariaDB root
 db_admin_user: ansible_admin
 db_admin_password: "AdminSQL123!"
 
-# Hosts lógicos (inventario)
 db_primary_host: backend1
 db_replica_host: backend2
 
-# Replicación
 db_repl_user: repl_user
 db_repl_password: "ReplPass123!"
+
+# -------------------------
+# VARIABLES MYSQL (USO EN DJANGO Y BACKEND)
+# -------------------------
+
+mysql_host: "10.0.2.29"
+mysql_port: 3306
+
+mysql_database: "{{ db_name }}"
+mysql_user: "{{ db_user }}"
+mysql_password: "{{ db_password }}"
+
+mysql_root_password: "{{ db_root_password }}"
 
 # =========================
 # DJANGO CONFIG
 # =========================
 django_project_name: clinica
 django_base_dir: /var/www/clinica_app
+django_project_dir: "{{ django_base_dir }}/{{ django_project_name }}"
+django_venv: "{{ django_base_dir }}/venv"
+django_settings_module: "{{ django_project_name }}.settings"
+
 django_user: www-data
 django_group: www-data
 
@@ -34,9 +48,10 @@ django_debug: false
 django_allowed_hosts:
   - "localhost"
   - "127.0.0.1"
-  - "{{ hostvars['lb1'].ansible_host }}"
-  - "{{ hostvars['frontend1'].ansible_host }}"
-  - "{{ hostvars['frontend2'].ansible_host }}"
+  - "*.ddns.net"
+  - "{{ hostvars['lb1'].ansible_host | default('') }}"
+  - "{{ hostvars['frontend1'].ansible_host | default('') }}"
+  - "{{ hostvars['frontend2'].ansible_host | default('') }}"
 
 django_static_root: "{{ django_base_dir }}/static"
 django_media_root: "{{ django_base_dir }}/media"
@@ -52,11 +67,11 @@ gunicorn_workers: 3
 nfs_export_dir: /srv/nfs/clinica_media
 nfs_allowed_clients: "10.0.0.0/16"
 
-# =========================
-# LET'S ENCRYPT
-# =========================
+# ----------------------------
+# LET'S ENCRYPT / CERTBOT
+# ----------------------------
+certbot_email: "fernandezbonillamarina@gmail.com"
 domain_name: "miclinica.ddns.net"
-letsencrypt_email: "correo@example.com"
 
 # =========================
 # LOCAL PATHS (control node)
@@ -65,10 +80,26 @@ sql_dir: sql
 templates_dir: templates
 
 # =========================
-# USERS PARA DEMO DJANGO
+# DEMO USERS DJANGO
 # =========================
 django_demo_users:
   admin_password: "AdminClinica.123"
   medico1_password: "MedicoClinica.123"
   recepcion1_password: "RecepcionClinica.123"
   enfermero1_password: "EnfermeroClinica.123"
+
+# =============================
+# VARIABLES PARA LOAD BALANCER
+# =============================
+lb_nginx_conf_path: /etc/nginx/nginx.conf
+lb_sites_available: /etc/nginx/sites-available
+lb_sites_enabled: /etc/nginx/sites-enabled
+
+lb_server_name: miclinica.ddns.net
+
+frontend_servers:
+  - "10.0.2.49"
+  - "10.0.2.211"
+
+django_port: 8000
+

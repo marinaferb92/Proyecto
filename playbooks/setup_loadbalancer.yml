@@ -1,6 +1,5 @@
 ---
-- name: Configurar Nginx como balanceador de carga
-  hosts: lb
+- hosts: lb
   become: yes
   vars_files:
     - ../vars/variables.yml
@@ -17,50 +16,47 @@
       file:
         path: /etc/nginx
         state: directory
-        mode: "0755"
 
-    - name: Crear nginx.conf base si no existe
+    - name: Crear nginx.conf estándar (no tocar)
       copy:
         dest: /etc/nginx/nginx.conf
-        force: no
-        mode: "0644"
         content: |
           user www-data;
           worker_processes auto;
           pid /run/nginx.pid;
-          include /etc/nginx/modules-enabled/*.conf;
 
           events {
               worker_connections 768;
           }
 
           http {
-              sendfile on;
-              tcp_nopush on;
-              types_hash_max_size 2048;
+              include       /etc/nginx/mime.types;
+              default_type  application/octet-stream;
 
-              include /etc/nginx/mime.types;
-              default_type application/octet-stream;
-
+              sendfile        on;
               keepalive_timeout 65;
 
-              include /etc/nginx/conf.d/*.conf;
               include /etc/nginx/sites-enabled/*;
           }
 
-    - name: Copiar configuración del balanceador
+    - name: Crear configuración del balanceador
       template:
-        src: "../templates/loadbalancer.conf.j2"
-        dest: "{{ lb_nginx_conf_path }}"
-        mode: "0644"
+        src: templates/loadbalancer.conf.j2
+        dest: /etc/nginx/sites-available/clinica_lb.conf
 
-    - name: Eliminar sitio default de nginx
+    - name: Activar sitio
+      file:
+        src: /etc/nginx/sites-available/clinica_lb.conf
+        dest: /etc/nginx/sites-enabled/clinica_lb.conf
+        state: link
+        force: yes
+
+    - name: Eliminar default
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Recargar Nginx
-      systemd:
+    - name: Recargar nginx
+      service:
         name: nginx
         state: restarted
-        enabled: yes

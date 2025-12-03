@@ -1,6 +1,6 @@
 ---
 - name: Importar SQL inicial
-  hosts: "{{ db_primary_host }}"
+  hosts: backend
   become: yes
   vars_files:
     - ../vars/variables.yml
