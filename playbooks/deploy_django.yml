@@ -7,22 +7,19 @@
 
   tasks:
 
-    # ------------------------------------------------------
-    # 1. Copiar HTML / management / estáticos del core
-    # ------------------------------------------------------
-    - name: Copiar archivos no-Python del core
+    - name: Copiar app core (HTML, templates, management)
       synchronize:
         src: "{{ playbook_dir }}/templates/core/"
         dest: "{{ django_base_dir }}/core/"
         recursive: yes
         delete: no
         rsync_opts:
-          - "--exclude=*.py.j2"
+          - "--exclude=views.py.j2"
+          - "--exclude=models.py.j2"
+          - "--exclude=forms.py.j2"
+          - "--exclude=admin.py.j2"
           - "--exclude=urls.py.j2"
 
-    # ------------------------------------------------------
-    # 2. Renderizar archivos Python del core
-    # ------------------------------------------------------
     - name: Renderizar archivos Python de core
       template:
         src: "{{ playbook_dir }}/templates/core/{{ item }}.j2"
@@ -35,28 +32,20 @@
         - admin.py
       notify: Restart gunicorn
 
-    # ------------------------------------------------------
-    # 3. Renderizar urls.py
-    # ------------------------------------------------------
-    - name: Renderizar urls.py del core
+    - name: Renderizar urls.py de core
       template:
         src: "{{ playbook_dir }}/templates/core/urls.py.j2"
         dest: "{{ django_base_dir }}/core/urls.py"
+        mode: "0644"
       notify: Restart gunicorn
 
-    # ------------------------------------------------------
-    # 4. Migraciones
-    # ------------------------------------------------------
-    - name: Ejecutar migraciones
+    - name: Migraciones
       command: "{{ django_venv }}/bin/python3 manage.py migrate --noinput"
       args:
         chdir: "{{ django_base_dir }}"
       notify: Restart gunicorn
 
-    # ------------------------------------------------------
-    # 5. Actualizar static
-    # ------------------------------------------------------
-    - name: Actualizar staticfiles
+    - name: Staticfiles
       command: "{{ django_venv }}/bin/python3 manage.py collectstatic --noinput"
       args:
         chdir: "{{ django_base_dir }}"

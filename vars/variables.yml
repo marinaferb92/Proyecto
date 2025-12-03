@@ -2,7 +2,7 @@
 # BACKEND / DATABASE
 # =========================
 
-# Variables base (se siguen usando en setup_backend.yml)
+# Variables base
 db_name: clinica_db
 db_user: clinica_user
 db_password: "ClinicaPass123!"
@@ -11,16 +11,17 @@ db_root_password: "RootDB123!"      # para MariaDB root
 db_admin_user: ansible_admin
 db_admin_password: "AdminSQL123!"
 
-db_primary_host: backend1
+db_primary_host: backend1           # nombre del host en inventory
 db_replica_host: backend2
 
 db_repl_user: repl_user
 db_repl_password: "ReplPass123!"
 
 # -------------------------
-# VARIABLES MYSQL (USO EN DJANGO Y BACKEND)
+# VARIABLES MYSQL
 # -------------------------
 
+# IMPORTANTE: IP REAL DEL BACKEND PRIMARIO
 mysql_host: "10.0.2.29"
 mysql_port: 3306
 
@@ -49,9 +50,9 @@ django_allowed_hosts:
   - "localhost"
   - "127.0.0.1"
   - "*.ddns.net"
-  - "{{ hostvars['lb1'].ansible_host | default('') }}"
-  - "{{ hostvars['frontend1'].ansible_host | default('') }}"
-  - "{{ hostvars['frontend2'].ansible_host | default('') }}"
+  - "{{ hostvars['lb1'].ansible_host }}"
+  - "{{ hostvars['frontend1'].ansible_host }}"
+  - "{{ hostvars['frontend2'].ansible_host }}"
 
 django_static_root: "{{ django_base_dir }}/static"
 django_media_root: "{{ django_base_dir }}/media"
@@ -91,15 +92,16 @@ django_demo_users:
 # =============================
 # VARIABLES PARA LOAD BALANCER
 # =============================
+
 lb_nginx_conf_path: /etc/nginx/nginx.conf
 lb_sites_available: /etc/nginx/sites-available
 lb_sites_enabled: /etc/nginx/sites-enabled
 
 lb_server_name: miclinica.ddns.net
 
+# IPs REALES DE FRONTENDS
 frontend_servers:
-  - "10.0.2.49"
-  - "10.0.2.211"
+  - "10.0.2.49"      # frontend1
+  - "10.0.2.211"     # frontend2
 
 django_port: 8000
-
