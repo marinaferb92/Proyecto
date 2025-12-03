@@ -20,5 +20,6 @@
 - import_playbook: playbooks/setup_nfs.yml
 - import_playbook: playbooks/setup_nfs_client.yml
 - import_playbook: playbooks/setup_django.yml
+- import_playbook: playbooks/deploy_django.yml
 - import_playbook: playbooks/setup_loadbalancer.yml
 - import_playbook: playbooks/setup_letsencrypt_https.yml

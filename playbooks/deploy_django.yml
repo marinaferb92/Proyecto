@@ -1,0 +1,60 @@
+---
+- name: Desplegar aplicación Django
+  hosts: frontends
+  become: yes
+
+  vars:
+    django_dir: /var/www/clinica_app
+    project_name: clinica
+    venv_dir: "{{ django_dir }}/venv"
+
+  tasks:
+
+    - name: Sincronizar código fuente del proyecto
+      synchronize:
+        src: "../src/{{ project_name }}/"
+        dest: "{{ django_dir }}/{{ project_name }}/"
+        delete: yes
+        recursive: yes
+
+    - name: Copiar templates de la app (core)
+      template:
+        src: "../templates/core/{{ item }}"
+        dest: "{{ django_dir }}/core/{{ item | regex_replace('.j2','') }}"
+      loop:
+        - models.py.j2
+        - views.py.j2
+        - urls.py.j2
+        - forms.py.j2
+        - admin.py.j2
+        - templates/base.html.j2
+        - templates/clientes_list.html.j2
+        - templates/clientes_detail.html.j2
+        - templates/inventario_list.html.j2
+        - templates/citas_list.html.j2
+
+    - name: Ejecutar migrate
+      command: "{{ venv_dir }}/bin/python manage.py migrate"
+      args:
+        chdir: "{{ django_dir }}"
+
+    - name: Crear usuario superadmin si no existe
+      command: >
+        {{ venv_dir }}/bin/python manage.py shell -c
+        "from django.contrib.auth import get_user_model;
+         User=get_user_model();
+         User.objects.filter(username='admin').exists()
+         or User.objects.create_superuser('admin','admin@example.com','admin123')"
+      args:
+        chdir: "{{ django_dir }}"
+
+    - name: Ejecutar seed_demo (si existe)
+      command: "{{ venv_dir }}/bin/python manage.py seed_demo"
+      args:
+        chdir: "{{ django_dir }}"
+      ignore_errors: yes
+
+    - name: Reiniciar Gunicorn
+      systemd:
+        name: gunicorn_clinica
+        state: restarted

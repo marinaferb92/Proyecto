@@ -1,82 +1,42 @@
 ---
-- name: Importar estructura y datos en el servidor MariaDB primario
+- name: Importar SQL inicial
   hosts: "{{ db_primary_host }}"
   become: yes
   vars_files:
     - ../vars/variables.yml
 
-  vars:
-    estructura_marker: /var/lib/mysql/.clinica_estructura_importada
-    base_marker: /var/lib/mysql/.clinica_datos_base_importados
-    demo_marker: /var/lib/mysql/.clinica_datos_demo_importados
-
   tasks:
 
-    ##############################################################
-    # 0. RESET TOTAL de la base de datos
-    ##############################################################
-    - name: Borrar base de datos existente
-      mysql_db:
-        name: "{{ db_name }}"
-        state: absent
-        login_user: "{{ db_admin_user }}"
-        login_password: "{{ db_admin_password }}"
-        login_host: "localhost"
-
-    - name: Crear base de datos vacía
-      mysql_db:
-        name: "{{ db_name }}"
-        state: present
-        encoding: utf8mb4
-        collation: utf8mb4_unicode_ci
-        login_user: "{{ db_admin_user }}"
-        login_password: "{{ db_admin_password }}"
-        login_host: "localhost"
-
-    ##############################################################
-    # 1. Copiar ficheros SQL
-    ##############################################################
-    - name: Copiar ficheros SQL
+    - name: Copiar SQL al servidor
       copy:
-        src: "{{ item }}"
-        dest: "/tmp/{{ item | basename }}"
+        src: "../{{ sql_dir }}/{{ item }}"
+        dest: "/tmp/{{ item }}"
+        mode: "0644"
       loop:
-        - "{{ playbook_dir }}/../sql/clinica_estructura.sql"
-        - "{{ playbook_dir }}/../sql/clinica_datos_base.sql"
-        - "{{ playbook_dir }}/../sql/clinica_datos_demo.sql"
+        - clinica_estructura.sql
+        - clinica_datos_base.sql
+        - clinica_datos_demo.sql
 
-    ##############################################################
-    # 2. Importar Estructura
-    ##############################################################
-    - name: Importar estructura SQL
-      shell: >
-        mysql {{ db_name }} < /tmp/clinica_estructura.sql
+    - name: Importar estructura (tablas, FKs, triggers, vistas, etc.)
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: import
+        target: "/tmp/clinica_estructura.sql"
+        login_user: root
+        login_password: "{{ db_root_password }}"
 
-    - name: Crear marker estructura
-      file:
-        path: "{{ estructura_marker }}"
-        state: touch
+    - name: Importar datos base (catálogos, etc.)
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: import
+        target: "/tmp/clinica_datos_base.sql"
+        login_user: root
+        login_password: "{{ db_root_password }}"
 
-    ##############################################################
-    # 3. Importar datos base
-    ##############################################################
-    - name: Importar datos base SQL
-      shell: >
-        mysql {{ db_name }} < /tmp/clinica_datos_base.sql
-
-    - name: Crear marker datos base
-      file:
-        path: "{{ base_marker }}"
-        state: touch
-
-    ##############################################################
-    # 4. Importar datos demo
-    ##############################################################
-    - name: Importar datos demo SQL
-      shell: >
-        mysql {{ db_name }} < /tmp/clinica_datos_demo.sql
-
-    - name: Crear marker datos demo
-      file:
-        path: "{{ demo_marker }}"
-        state: touch
+    - name: Importar datos demo (clientes, citas, etc.)
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: import
+        target: "/tmp/clinica_datos_demo.sql"
+        login_user: root
+        login_password: "{{ db_root_password }}"

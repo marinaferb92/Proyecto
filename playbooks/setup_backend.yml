@@ -1,91 +1,72 @@
 ---
-- name: Instalar y configurar MariaDB en los nodos backend
+- name: Instalar y configurar MariaDB (limpio e idempotente)
   hosts: backend
   become: yes
-
   vars_files:
     - ../vars/variables.yml
 
-  pre_tasks:
-    - name: Instalar dependencias
+  tasks:
+
+    - name: Instalar dependencias Python para mysql
       apt:
-        name:
-          - python3-pymysql
-          - mariadb-server
+        name: python3-pymysql
         state: present
         update_cache: yes
 
-  tasks:
+    - name: Instalar MariaDB Server
+      apt:
+        name: mariadb-server
+        state: present
+        update_cache: yes
 
-    #-------------------------------------------------------------
-    # 1. Asegurar MariaDB
-    #-------------------------------------------------------------
     - name: Asegurar que MariaDB está arrancado
       systemd:
         name: mariadb
         state: started
         enabled: yes
 
-    #-------------------------------------------------------------
-    # 2. Configurar bind-address
-    #-------------------------------------------------------------
-    - name: Configurar bind-address a 0.0.0.0
-      lineinfile:
-        path: /etc/mysql/mariadb.conf.d/50-server.cnf
-        regexp: '^bind-address'
-        line: "bind-address = 0.0.0.0"
-      notify: Restart MariaDB
+    - name: Establecer contraseña root si nunca se ha puesto
+      shell: >
+        mysql --user=root --execute="ALTER USER 'root'@'localhost'
+        IDENTIFIED BY '{{ db_root_password }}';"
+      args:
+        executable: /bin/bash
+      register: setroot
+      failed_when: false
+      changed_when: "'ERROR' not in setroot.stderr"
 
-    #-------------------------------------------------------------
-    # 3. Crear usuario admin SQL
-    #-------------------------------------------------------------
-    - name: Crear usuario administrador SQL
+    - name: Crear /root/.my.cnf (para acceso root sin password)
+      copy:
+        dest: /root/.my.cnf
+        mode: "0600"
+        content: |
+          [client]
+          user=root
+          password={{ db_root_password }}
+
+    - name: Crear usuario admin de Ansible
       community.mysql.mysql_user:
         name: "{{ db_admin_user }}"
         password: "{{ db_admin_password }}"
-        host: "localhost"
-        priv: "*.*:ALL,GRANT"
-        login_unix_socket: /var/run/mysqld/mysqld.sock
         state: present
+        host: "%"
+        priv: "*.*:ALL"
+        login_user: root
+        login_password: "{{ db_root_password }}"
 
-    #-------------------------------------------------------------
-    # 4. Crear /root/.my.cnf
-    #-------------------------------------------------------------
-    - name: Crear /root/.my.cnf
-      copy:
-        dest: /root/.my.cnf
-        content: |
-          [client]
-          user={{ db_admin_user }}
-          password={{ db_admin_password }}
-        mode: "0600"
-
-    #-------------------------------------------------------------
-    # 5. Crear BD (solo si no existe)
-    #-------------------------------------------------------------
-    - name: Crear base de datos
+    - name: Crear base de datos del proyecto
       community.mysql.mysql_db:
         name: "{{ db_name }}"
         state: present
-        encoding: utf8mb4
-        collation: utf8mb4_unicode_ci
+        login_user: root
+        login_password: "{{ db_root_password }}"
 
-    #-------------------------------------------------------------
-    # 6. Crear usuario frontend
-    #-------------------------------------------------------------
-    - name: Crear usuario MySQL para frontends
+    - name: Crear usuario del proyecto
       community.mysql.mysql_user:
         name: "{{ db_user }}"
         password: "{{ db_password }}"
-        host: "{{ item }}"
-        priv: "{{ db_name }}.*:ALL"
         state: present
-      loop:
-        - "{{ hostvars['frontend1'].ansible_host }}"
-        - "{{ hostvars['frontend2'].ansible_host }}"
-
-  handlers:
-    - name: Restart MariaDB
-      systemd:
-        name: mariadb
-        state: restarted
+        host: "%"
+        priv: "{{ db_name }}.*:ALL"
+        login_user: root
+        login_password: "{{ db_root_password }}"

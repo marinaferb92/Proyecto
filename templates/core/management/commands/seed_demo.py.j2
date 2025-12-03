@@ -1,0 +1,43 @@
+import random
+from datetime import date, timedelta, datetime
+from django.core.management.base import BaseCommand
+from django.contrib.auth.models import User
+from core.models import Clientes, Empleados, Tratamientos, Salas, Citas, Inventario
+
+class Command(BaseCommand):
+    help = "Carga datos DEMO para análisis"
+
+    def handle(self, *args, **options):
+
+        self.stdout.write("Creando usuarios...")
+
+        if not User.objects.filter(username="admin").exists():
+            User.objects.create_superuser("admin", "admin@test.com", "AdminClinica.123")
+
+        self.stdout.write("Creando citas aleatorias...")
+
+        clientes = list(Clientes.objects.all()[:50])
+        empleados = list(Empleados.objects.all()[:10])
+        tratamientos = list(Tratamientos.objects.all()[:10])
+        salas = list(Salas.objects.all()[:5])
+
+        for _ in range(200):
+            c = random.choice(clientes)
+            e = random.choice(empleados)
+            t = random.choice(tratamientos)
+            s = random.choice(salas)
+
+            fecha = date.today() - timedelta(days=random.randint(0, 90))
+            hora = datetime.now().time()
+
+            Citas.objects.get_or_create(
+                cliente=c,
+                empleado=e,
+                tratamiento=t,
+                sala=s,
+                fecha_cita=fecha,
+                hora_cita=hora,
+                defaults={"estado": "realizada"},
+            )
+
+        self.stdout.write(self.style.SUCCESS("Datos DEMO creados correctamente."))

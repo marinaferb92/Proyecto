@@ -1,0 +1,41 @@
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import *
+from .forms import *
+
+def dashboard(request):
+    total_clientes = Clientes.objects.count()
+    total_citas = Citas.objects.count()
+    citas_hoy = Citas.objects.filter(fecha_cita=date.today()).count()
+    productos_bajos = Inventario.objects.filter(stock_actual__lt=10).count()
+
+    return render(request, "core/dashboard.html", {
+        "total_clientes": total_clientes,
+        "total_citas": total_citas,
+        "citas_hoy": citas_hoy,
+        "productos_bajos": productos_bajos,
+    })
+
+# ---------------------------
+# CLIENTES
+# ---------------------------
+def clientes_list(request):
+    clientes = Clientes.objects.all()
+    return render(request, "core/clientes_list.html", {"clientes": clientes})
+
+def clientes_detail(request, pk):
+    cliente = get_object_or_404(Clientes, cliente_id=pk)
+    return render(request, "core/clientes_detail.html", {"cliente": cliente})
+
+# ---------------------------
+# CITAS
+# ---------------------------
+def citas_list(request):
+    citas = Citas.objects.select_related("cliente", "empleado", "tratamiento")
+    return render(request, "core/citas_list.html", {"citas": citas})
+
+# ---------------------------
+# INVENTARIO
+# ---------------------------
+def inventario_list(request):
+    items = Inventario.objects.select_related("proveedor")
+    return render(request, "core/inventario_list.html", {"items": items})

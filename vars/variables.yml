@@ -1,78 +1,72 @@
-# ========================================================
-# DATABASE CONFIG
-# ========================================================
+# =========================
+# BACKEND / DATABASE
+# =========================
 db_name: clinica_db
 db_user: clinica_user
 db_password: "ClinicaPass123!"
 
+# Root password
+db_root_password: "RootDB123!"
+
+# Usuario para Ansible (administrador)
 db_admin_user: ansible_admin
 db_admin_password: "AdminSQL123!"
 
+# Hosts lógicos (inventario)
 db_primary_host: backend1
 db_replica_host: backend2
 
+# Replicación
 db_repl_user: repl_user
 db_repl_password: "ReplPass123!"
 
-# ========================================================
-# DJANGO
-# ========================================================
+# =========================
+# DJANGO CONFIG
+# =========================
 django_project_name: clinica
-django_app_name: core
-
 django_base_dir: /var/www/clinica_app
-django_venv_dir: "{{ django_base_dir }}/venv"
-
 django_user: www-data
 django_group: www-data
 
-django_secret_key: "CAMBIA_ESTA_CLAVE_LARGA"
+django_secret_key: "CAMBIA_ESTO_POR_UNA_CLAVE_RANDOM"
 django_debug: false
+
+django_allowed_hosts:
+  - "localhost"
+  - "127.0.0.1"
+  - "{{ hostvars['lb1'].ansible_host }}"
+  - "{{ hostvars['frontend1'].ansible_host }}"
+  - "{{ hostvars['frontend2'].ansible_host }}"
 
 django_static_root: "{{ django_base_dir }}/static"
 django_media_root: "{{ django_base_dir }}/media"
 django_templates_dir: "{{ django_base_dir }}/templates"
 
-# HOSTS PERMITIDOS
-django_allowed_hosts:
-  - "{{ hostvars['frontend1'].ansible_host | default('') }}"
-  - "{{ hostvars['frontend2'].ansible_host | default('') }}"
-  - "{{ hostvars['lb1'].ansible_host | default('') }}"
-  - "{{ domain_name }}"
-  - "localhost"
-  - "127.0.0.1"
-
 gunicorn_bind_host: "127.0.0.1"
 gunicorn_bind_port: 8000
 gunicorn_workers: 3
 
-# ========================================================
+# =========================
 # NFS
-# ========================================================
+# =========================
 nfs_export_dir: /srv/nfs/clinica_media
-nfs_allowed_clients: "10.0.2.0/16"
-nfs_server: "{{ hostvars['nfs1'].ansible_host }}"
+nfs_allowed_clients: "10.0.0.0/16"
 
-# ========================================================
-# LOAD BALANCER
-# ========================================================
-lb_nginx_conf_path: /etc/nginx/conf.d/loadbalancer.conf
-
-# ========================================================
-# LETS ENCRYPT
-# ========================================================
+# =========================
+# LET'S ENCRYPT
+# =========================
 domain_name: "miclinica.ddns.net"
-letsencrypt_email: "tu-correo@ejemplo.com"
+letsencrypt_email: "correo@example.com"
 
-# ========================================================
-# CONTROL NODE PATHS
-# ========================================================
-sql_dir: "/home/ubuntu/clinica_project/sql"
-templates_dir: "/home/ubuntu/clinica_project/templates"
+# =========================
+# LOCAL PATHS (control node)
+# =========================
+sql_dir: sql
+templates_dir: templates
 
-# ========================================================
-# Django demo users
-# ========================================================
+# =========================
+# USERS PARA DEMO DJANGO
+# =========================
 django_demo_users:
   admin_password: "AdminClinica.123"
   medico1_password: "MedicoClinica.123"

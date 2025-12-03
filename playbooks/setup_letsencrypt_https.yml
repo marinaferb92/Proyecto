@@ -1,31 +1,33 @@
 ---
-- name: Configurar HTTPS con Let's Encrypt en el loadbalancer
-  hosts: loadbalancer
+- name: Activar HTTPS con Let's Encrypt
+  hosts: lb
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-    - name: Instalar certbot y plugin nginx
+
+    - name: Instalar Certbot + plugin de nginx
       apt:
         name:
           - certbot
           - python3-certbot-nginx
         state: present
-        update_cache: yes
+        update_cache: true
 
-    - name: Solicitar/renovar certificado Let's Encrypt
-      command: >
-        certbot --nginx
-        -d {{ domain_name }}
-        --non-interactive --agree-tos
-        -m {{ letsencrypt_email }}
-        --redirect
-      register: certbot_result
-      changed_when: "'Congratulations' in certbot_result.stdout"
+    - name: Generar certificado SSL automáticamente
+      command:
+        cmd: >
+          certbot --nginx
+          -d {{ domain_name }}
+          --agree-tos
+          --email {{ certbot_email }}
+          --redirect
+          --non-interactive
+      register: certbot_output
+      failed_when: certbot_output.rc not in [0, 1]
+      changed_when: certbot_output.rc == 0
 
-    - name: Activar timer de renovación automática
-      systemd:
-        name: certbot.timer
-        enabled: yes
-        state: started
+    - name: Mostrar salida de certbot
+      debug:
+        msg: "{{ certbot_output.stdout }}"

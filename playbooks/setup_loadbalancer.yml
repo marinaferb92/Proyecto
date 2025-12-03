@@ -1,37 +1,65 @@
 ---
-- name: Configurar Nginx como load balancer
-  hosts: loadbalancer
+- name: Configurar Nginx como balanceador de carga
+  hosts: lb
   become: yes
   vars_files:
     - ../vars/variables.yml
 
   tasks:
+
     - name: Instalar nginx
       apt:
         name: nginx
         state: present
         update_cache: yes
 
-    - name: Copiar config del load balancer
+    - name: Asegurar que /etc/nginx existe
+      file:
+        path: /etc/nginx
+        state: directory
+        mode: "0755"
+
+    - name: Crear nginx.conf base si no existe
+      copy:
+        dest: /etc/nginx/nginx.conf
+        force: no
+        mode: "0644"
+        content: |
+          user www-data;
+          worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
+          events {
+              worker_connections 768;
+          }
+
+          http {
+              sendfile on;
+              tcp_nopush on;
+              types_hash_max_size 2048;
+
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+
+              keepalive_timeout 65;
+
+              include /etc/nginx/conf.d/*.conf;
+              include /etc/nginx/sites-enabled/*;
+          }
+
+    - name: Copiar configuración del balanceador
       template:
-        src: "{{ templates_dir }}/loadbalancer.conf.j2"
+        src: "../templates/loadbalancer.conf.j2"
         dest: "{{ lb_nginx_conf_path }}"
-        owner: root
-        group: root
         mode: "0644"
 
-    - name: Eliminar default de nginx si existe
+    - name: Eliminar sitio default de nginx
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Probar configuración de nginx
-      command: nginx -t
-      register: nginx_test
-      changed_when: false
-      failed_when: nginx_test.rc != 0
-
-    - name: Recargar nginx
+    - name: Recargar Nginx
       systemd:
         name: nginx
         state: restarted

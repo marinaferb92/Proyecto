@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<h2>Citas</h2>
+<table border="1">
+<tr>
+    <th>ID</th>
+    <th>Cliente</th>
+    <th>Empleado</th>
+    <th>Tratamiento</th>
+    <th>Fecha</th>
+    <th>Estado</th>
+</tr>
+
+{% for c in citas %}
+<tr>
+<td>{{ c.cita_id }}</td>
+<td>{{ c.cliente }}</td>
+<td>{{ c.empleado }}</td>
+<td>{{ c.tratamiento }}</td>
+<td>{{ c.fecha_cita }} {{ c.hora_cita }}</td>
+<td>{{ c.estado }}</td>
+</tr>
+{% endfor %}
+</table>
+
+{% endblock %}

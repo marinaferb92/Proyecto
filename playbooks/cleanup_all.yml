@@ -1,0 +1,45 @@
+---
+- name: LIMPIAR TODAS LAS MAQUINAS
+  hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Parar servicios
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      ignore_errors: yes
+      loop:
+        - mariadb
+        - nginx
+        - gunicorn
+
+    - name: Eliminar directorios de proyectos
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/www/clinica_app
+      ignore_errors: yes
+
+    - name: Eliminar nginx configs
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/nginx/sites-enabled/clinica_lb.conf
+        - /etc/nginx/sites-available/clinica_lb.conf
+      ignore_errors: yes
+
+    - name: Forzar recreación NFS
+      file:
+        path: /srv/nfs
+        state: absent
+      ignore_errors: yes
+
+    - name: Reset MySQL
+      file:
+        path: /var/lib/mysql
+        state: absent
+      ignore_errors: yes

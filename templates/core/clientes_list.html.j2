@@ -1,0 +1,17 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h2>Clientes</h2>
+
+<table border="1">
+<tr><th>ID</th><th>Nombre</th><th>Email</th><th>Teléfono</th></tr>
+{% for c in clientes %}
+<tr>
+<td>{{ c.cliente_id }}</td>
+<td><a href="/clientes/{{ c.cliente_id }}/">{{ c.nombre }} {{ c.apellido }}</a></td>
+<td>{{ c.correo }}</td>
+<td>{{ c.telefono }}</td>
+</tr>
+{% endfor %}
+</table>
+
+{% endblock %}

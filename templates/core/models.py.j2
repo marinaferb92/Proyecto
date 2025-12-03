@@ -1,0 +1,283 @@
+from django.db import models
+
+# ============================================
+#   NOTA IMPORTANTE
+#   Todas las tablas vienen de MariaDB
+#   No se gestionan con migraciones Django
+# ============================================
+
+class Clientes(models.Model):
+    cliente_id = models.AutoField(primary_key=True)
+    dni = models.CharField(max_length=15, unique=True, null=True)
+    nombre = models.CharField(max_length=100)
+    apellido = models.CharField(max_length=100)
+    fecha_nacimiento = models.DateField(null=True)
+    edad = models.IntegerField(null=True)
+    genero = models.CharField(max_length=20)
+    telefono = models.CharField(max_length=20, null=True)
+    correo = models.CharField(max_length=100, null=True)
+    direccion = models.TextField(null=True)
+    fecha_registro = models.DateField(null=True)
+    origen_cliente = models.CharField(max_length=30)
+
+    class Meta:
+        managed = False
+        db_table = 'Clientes'
+
+    def __str__(self):
+        return f"{self.nombre} {self.apellido}"
+
+
+class CategoriasEmpleados(models.Model):
+    categoria_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50)
+    descripcion = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'CategoriasEmpleados'
+
+
+class Empleados(models.Model):
+    empleado_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    apellido = models.CharField(max_length=100)
+    fecha_ingreso = models.DateField(null=True)
+    telefono = models.CharField(max_length=20, null=True)
+    email = models.CharField(max_length=100, null=True)
+    categoria = models.ForeignKey(CategoriasEmpleados, models.DO_NOTHING, db_column='categoria_id')
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        managed = False
+        db_table = 'Empleados'
+
+
+class Especialidades(models.Model):
+    especialidad_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'Especialidades'
+
+
+class EmpleadoEspecialidad(models.Model):
+    empleado = models.ForeignKey(Empleados, models.DO_NOTHING, db_column='empleado_id')
+    especialidad = models.ForeignKey(Especialidades, models.DO_NOTHING, db_column='especialidad_id')
+
+    class Meta:
+        managed = False
+        db_table = 'EmpleadoEspecialidad'
+        unique_together = (('empleado', 'especialidad'),)
+
+
+class FichasMedicas(models.Model):
+    ficha_id = models.AutoField(primary_key=True)
+    cliente = models.ForeignKey(Clientes, models.DO_NOTHING, db_column='cliente_id')
+    alergias = models.TextField(null=True)
+    antecedentes = models.TextField(null=True)
+    observaciones = models.TextField(null=True)
+    fecha_actualizacion = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'FichasMedicas'
+
+
+class Salas(models.Model):
+    sala_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=50)
+    capacidad = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'Salas'
+
+
+class CategoriasTratamientos(models.Model):
+    categoria_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'CategoriasTratamientos'
+
+
+class Tratamientos(models.Model):
+    tratamiento_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(null=True)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    duracion_min = models.IntegerField()
+    categoria = models.ForeignKey(CategoriasTratamientos, models.DO_NOTHING, db_column='categoria_id')
+    requiere_sala = models.BooleanField()
+
+    class Meta:
+        managed = False
+        db_table = 'Tratamientos'
+
+
+class TratamientosPrevios(models.Model):
+    cliente = models.ForeignKey(Clientes, models.DO_NOTHING, db_column='cliente_id')
+    tratamiento = models.ForeignKey(Tratamientos, models.DO_NOTHING, db_column='tratamiento_id')
+    fecha_tratamiento = models.DateField()
+    notas = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'TratamientosPrevios'
+        unique_together = (('cliente', 'tratamiento', 'fecha_tratamiento'),)
+
+
+class Citas(models.Model):
+    cita_id = models.AutoField(primary_key=True)
+    cliente = models.ForeignKey(Clientes, models.DO_NOTHING, db_column='cliente_id')
+    empleado = models.ForeignKey(Empleados, models.DO_NOTHING, db_column='empleado_id')
+    tratamiento = models.ForeignKey(Tratamientos, models.DO_NOTHING, db_column='tratamiento_id')
+    sala = models.ForeignKey(Salas, models.DO_NOTHING, db_column='sala_id', null=True)
+    fecha_cita = models.DateField()
+    hora_cita = models.TimeField()
+    estado = models.CharField(max_length=20)
+    observaciones = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'Citas'
+
+
+class Pagos(models.Model):
+    pago_id = models.AutoField(primary_key=True)
+    cita = models.ForeignKey(Citas, models.DO_NOTHING, db_column='cita_id')
+    metodo_pago = models.CharField(max_length=20)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_pago = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'Pagos'
+
+
+class Valoraciones(models.Model):
+    valoracion_id = models.AutoField(primary_key=True)
+    cita = models.ForeignKey(Citas, models.DO_NOTHING, db_column='cita_id')
+    puntuacion = models.IntegerField()
+    comentario = models.TextField(null=True)
+    fecha_valoracion = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'Valoraciones'
+
+
+class Proveedores(models.Model):
+    proveedor_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=20, null=True)
+    correo = models.CharField(max_length=100, null=True)
+    direccion = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'Proveedores'
+
+
+class Inventario(models.Model):
+    item_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=50)
+    stock_actual = models.IntegerField()
+    unidad = models.CharField(max_length=20, null=True)
+    costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    proveedor = models.ForeignKey(Proveedores, models.DO_NOTHING, db_column='proveedor_id', null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'Inventario'
+
+
+class ConsumoMaterial(models.Model):
+    cita = models.ForeignKey(Citas, models.DO_NOTHING, db_column='cita_id')
+    item = models.ForeignKey(Inventario, models.DO_NOTHING, db_column='item_id')
+    cantidad_usada = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'ConsumoMaterial'
+        unique_together = (('cita', 'item'),)
+
+
+class MovimientosInventario(models.Model):
+    movimiento_id = models.AutoField(primary_key=True)
+    item = models.ForeignKey(Inventario, models.DO_NOTHING, db_column='item_id')
+    tipo = models.CharField(max_length=20)
+    cantidad = models.IntegerField()
+    fecha_movimiento = models.DateTimeField()
+    descripcion = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'MovimientosInventario'
+
+
+class CampañasMarketing(models.Model):
+    campaña_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    canal = models.CharField(max_length=50)
+    fecha_inicio = models.DateField(null=True)
+    fecha_fin = models.DateField(null=True)
+    presupuesto = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'CampañasMarketing'
+
+
+class DescuentosPromociones(models.Model):
+    promo_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=30)
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_inicio = models.DateField(null=True)
+    fecha_fin = models.DateField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'DescuentosPromociones'
+
+
+class CitaPromocion(models.Model):
+    cita = models.ForeignKey(Citas, models.DO_NOTHING, db_column='cita_id')
+    promo = models.ForeignKey(DescuentosPromociones, models.DO_NOTHING, db_column='promo_id')
+
+    class Meta:
+        managed = False
+        db_table = 'CitaPromocion'
+        unique_together = (('cita', 'promo'),)
+
+
+class LogsActividad(models.Model):
+    log_id = models.AutoField(primary_key=True)
+    empleado = models.ForeignKey(Empleados, models.DO_NOTHING, db_column='empleado_id', null=True)
+    accion = models.CharField(max_length=255)
+    fecha = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'LogsActividad'
+
+
+class EstadisticasDiarias(models.Model):
+    fecha = models.DateField(primary_key=True)
+    citas_totales = models.IntegerField()
+    citas_realizadas = models.IntegerField()
+    citas_canceladas = models.IntegerField()
+    ingresos_totales = models.DecimalField(max_digits=10, decimal_places=2)
+    tratamientos_distintos = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'EstadisticasDiarias'

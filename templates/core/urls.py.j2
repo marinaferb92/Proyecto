@@ -1,0 +1,16 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path("", views.dashboard, name="dashboard"),
+
+    # Clientes
+    path("clientes/", views.clientes_list, name="clientes_list"),
+    path("clientes/<int:pk>/", views.clientes_detail, name="clientes_detail"),
+
+    # Citas
+    path("citas/", views.citas_list, name="citas_list"),
+
+    # Inventario
+    path("inventario/", views.inventario_list, name="inventario_list"),
+]

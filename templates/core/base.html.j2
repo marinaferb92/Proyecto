@@ -1,30 +1,18 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Clínica - Intranet</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Clínica Estética</title>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'core:dashboard' %}">Clínica</a>
-        <div>
-            <a class="nav-link d-inline text-white" href="{% url 'core:appointment_list' %}">Citas</a>
-            <a class="nav-link d-inline text-white" href="{% url 'core:patient_list' %}">Pacientes</a>
-            <a class="nav-link d-inline text-white" href="{% url 'core:stock_list' %}">Stock</a>
-            <a class="nav-link d-inline text-white" href="/admin/">Admin</a>
-        </div>
-    </div>
-</nav>
-
-<div class="container">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-info">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    {% block content %}{% endblock %}
-</div>
+    <h1>Clínica Estética</h1>
+    <nav>
+        <a href="/">Dashboard</a> |
+        <a href="/clientes/">Clientes</a> |
+        <a href="/citas/">Citas</a> |
+        <a href="/inventario/">Inventario</a>
+    </nav>
+    <hr>
+    {% block content %}
+    {% endblock %}
 </body>
 </html>
