@@ -1,62 +1,47 @@
 ---
-- hosts: lb
+- name: Configurar Load Balancer
+  hosts: lb
   become: yes
   vars_files:
     - ../vars/variables.yml
-
   tasks:
+    - name: Actualizar sistema
+      apt:
+        update_cache: yes
+        upgrade: yes
 
-    - name: Instalar nginx
+    - name: Instalar Nginx
       apt:
         name: nginx
         state: present
-        update_cache: yes
 
-    - name: Asegurar que /etc/nginx existe
-      file:
-        path: /etc/nginx
-        state: directory
-
-    - name: Crear nginx.conf estándar (no tocar)
-      copy:
-        dest: /etc/nginx/nginx.conf
-        content: |
-          user www-data;
-          worker_processes auto;
-          pid /run/nginx.pid;
-
-          events {
-              worker_connections 768;
-          }
-
-          http {
-              include       /etc/nginx/mime.types;
-              default_type  application/octet-stream;
-
-              sendfile        on;
-              keepalive_timeout 65;
-
-              include /etc/nginx/sites-enabled/*;
-          }
-
-    - name: Crear configuración del balanceador
-      template:
-        src: templates/loadbalancer.conf.j2
-        dest: /etc/nginx/sites-available/clinica_lb.conf
-
-    - name: Activar sitio
-      file:
-        src: /etc/nginx/sites-available/clinica_lb.conf
-        dest: /etc/nginx/sites-enabled/clinica_lb.conf
-        state: link
-        force: yes
-
-    - name: Eliminar default
+    - name: Deshabilitar virtualhost por defecto
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Recargar nginx
-      service:
+    - name: Copiar configuración de Nginx
+      copy:
+        src: ../templates/loadbalancer.conf
+        dest: /etc/nginx/sites-available/loadbalancer.conf
+
+    - name: Reemplazar valores en configuración de Nginx
+      replace:
+        path: /etc/nginx/sites-available/loadbalancer.conf
+        regexp: "{{ item.regex }}"
+        replace: "{{ item.value }}"
+      loop:
+        - { regex: 'IP_FRONTEND_1', value: '{{ ip.frontend1 }}' }
+        - { regex: 'IP_FRONTEND_2', value: '{{ ip.frontend2 }}' }
+        - { regex: 'LE_DOMAIN', value: '{{ certbot.domain }}' }
+
+    - name: Habilitar el sitio Nginx
+      file:
+        src: /etc/nginx/sites-available/loadbalancer.conf
+        dest: /etc/nginx/sites-enabled/loadbalancer.conf
+        state: link
+
+    - name: Reiniciar Nginx
+      systemd:
         name: nginx
         state: restarted

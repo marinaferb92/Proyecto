@@ -1,0 +1,36 @@
+<?php
+include "auth.php";
+requireRole(["admin"]);
+$pageTitle = "Empleados";
+include "header.php";
+include "config.php";
+
+$empleados = $pdo->query("
+    SELECT e.*, c.nombre AS categoria
+    FROM Empleados e
+    LEFT JOIN CategoriasEmpleados c ON e.categoria_id = c.categoria_id
+")->fetchAll();
+?>
+
+<h2>Empleados</h2>
+
+<table class="table table-bordered">
+<thead>
+<tr>
+<th>ID</th><th>Nombre</th><th>Email</th><th>Categoría</th><th>Activo</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($empleados as $e): ?>
+<tr>
+<td><?= $e["empleado_id"] ?></td>
+<td><?= $e["nombre"] . " " . $e["apellido"] ?></td>
+<td><?= $e["email"] ?></td>
+<td><?= $e["categoria"] ?></td>
+<td><?= $e["activo"] ? "Sí" : "No" ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+
+<?php include "footer.php"; ?>

@@ -1,34 +1,32 @@
 ---
-- name: Configurar servidor NFS
+- name: Configurar NFS Server
   hosts: nfs
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
-
-    - name: Instalar NFS
+    - name: Instalar NFS server
       apt:
         name: nfs-kernel-server
         state: present
-        update_cache: yes
 
-    - name: Crear directorio exportado
+    - name: Crear directorio de medios compartidos
       file:
-        path: "{{ nfs_export_dir }}"
+        path: "{{ directories.shared_media }}"
         state: directory
+        mode: '0777'
         owner: nobody
         group: nogroup
-        mode: "0777"
 
     - name: Configurar /etc/exports
-      template:
-        src: "../templates/nfs/clinica.exports.j2"
-        dest: "/etc/exports"
-        mode: "0644"
+      copy:
+        dest: /etc/exports
+        content: |
+          {{ directories.shared_media }} {{ network.frontend_network }}(rw,sync,no_subtree_check)
 
-    - name: Reiniciar NFS
-      systemd:
-        name: nfs-server
+    - name: Reiniciar servicio NFS
+      service:
+        name: nfs-kernel-server
         state: restarted
-        enabled: yes

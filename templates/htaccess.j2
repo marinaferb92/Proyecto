@@ -1,0 +1,9 @@
+<FilesMatch "\.(ini|env|config|sql|sh)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+Header always append X-Frame-Options SAMEORIGIN
+Header set X-XSS-Protection "1; mode=block"
+
+RewriteEngine On

@@ -1,0 +1,17 @@
+<?php $rol = $_SESSION['rol'] ?? null; ?>
+
+<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+  <?php if ($rol): ?>
+    <li class="nav-item"><a class="nav-link" href="dashboard.php">Inicio</a></li>
+    <li class="nav-item"><a class="nav-link" href="citas.php">Citas</a></li>
+    <li class="nav-item"><a class="nav-link" href="clientes.php">Clientes</a></li>
+    <li class="nav-item"><a class="nav-link" href="tratamientos.php">Tratamientos</a></li>
+    <li class="nav-item"><a class="nav-link" href="inventario.php">Inventario</a></li>
+    <?php if ($rol === 'admin'): ?>
+      <li class="nav-item"><a class="nav-link" href="empleados.php">Empleados/Usuarios</a></li>
+    <?php endif; ?>
+    <li class="nav-item"><a class="nav-link" href="logout.php">Salir</a></li>
+  <?php else: ?>
+    <li class="nav-item"><a class="nav-link" href="index.php">Login</a></li>
+  <?php endif; ?>
+</ul>

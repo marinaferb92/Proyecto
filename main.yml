@@ -1,8 +1,4 @@
 ---
-# ========================================================
-# MAIN PLAYBOOK que carga variables y ejecuta despliegue
-# ========================================================
-
 - name: Cargar variables globales
   hosts: localhost
   gather_facts: false
@@ -12,14 +8,12 @@
     - debug:
         msg: "Variables cargadas correctamente"
 
-# ========================================================
-# IMPORTAR PLAYBOOKS EN ORDEN
-# ========================================================
 - import_playbook: playbooks/setup_backend.yml
 - import_playbook: playbooks/deploy_backend.yml
+- import_playbook: playbooks/create_admin_user.yml
 - import_playbook: playbooks/setup_nfs.yml
 - import_playbook: playbooks/setup_nfs_client.yml
-- import_playbook: playbooks/setup_django.yml
-- import_playbook: playbooks/deploy_django.yml
+- import_playbook: playbooks/setup_frontend.yml
+- import_playbook: playbooks/deploy_frontend.yml
 - import_playbook: playbooks/setup_loadbalancer.yml
 - import_playbook: playbooks/setup_letsencrypt_https.yml

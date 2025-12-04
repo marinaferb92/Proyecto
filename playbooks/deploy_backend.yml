@@ -1,42 +1,25 @@
 ---
-- name: Importar SQL inicial
-  hosts: backend
+- name: Importar SQL completo de la clínica
+  hosts: backend1
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
-    - name: Copiar SQL al servidor
+    - name: Crear base de datos si no existe
+      mysql_db:
+        name: "{{ db.name }}"
+        state: present
+        login_user: root
+        login_password: "{{ db.root_password }}"
+
+    - name: Copiar SQL completo
       copy:
-        src: "../{{ sql_dir }}/{{ item }}"
-        dest: "/tmp/{{ item }}"
-        mode: "0644"
-      loop:
-        - clinica_estructura.sql
-        - clinica_datos_base.sql
-        - clinica_datos_demo.sql
+        src: ../sql/clinica.sql
+        dest: /tmp/clinica.sql
 
-    - name: Importar estructura (tablas, FKs, triggers, vistas, etc.)
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
-        state: import
-        target: "/tmp/clinica_estructura.sql"
-        login_user: root
-        login_password: "{{ db_root_password }}"
-
-    - name: Importar datos base (catálogos, etc.)
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
-        state: import
-        target: "/tmp/clinica_datos_base.sql"
-        login_user: root
-        login_password: "{{ db_root_password }}"
-
-    - name: Importar datos demo (clientes, citas, etc.)
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
-        state: import
-        target: "/tmp/clinica_datos_demo.sql"
-        login_user: root
-        login_password: "{{ db_root_password }}"
+    - name: Importar SQL grande manualmente (mucho más estable)
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" {{ db.name }} < /tmp/clinica.sql

@@ -1,0 +1,31 @@
+<?php
+include "auth.php";
+requireRole(["admin", "recepcionista"]);
+$pageTitle = "Clientes";
+include "header.php";
+include "config.php";
+
+$clientes = $pdo->query("SELECT * FROM Clientes ORDER BY cliente_id DESC")->fetchAll();
+?>
+
+<h2>Clientes</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($clientes as $c): ?>
+            <tr>
+                <td><?= $c["cliente_id"] ?></td>
+                <td><?= $c["nombre"] ?> <?= $c["apellido"] ?></td>
+                <td><?= $c["telefono"] ?></td>
+                <td><?= $c["correo"] ?></td>
+            </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+
+<?php include "footer.php"; ?>

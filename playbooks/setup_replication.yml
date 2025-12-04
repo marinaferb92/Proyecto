@@ -1,0 +1,87 @@
+---
+- name: Instalar y configurar MySQL Backend (Maestro y Réplica)
+  hosts: backend
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+
+    - name: Instalar MySQL Server
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Instalar dependencias para Ansible MySQL
+      apt:
+        name: python3-pymysql
+        state: present
+
+    - name: Instalar PHP CLI para generar hashes
+      apt:
+        name: php-cli
+        state: present
+
+    # ============================================================
+    # CONFIG ROOT AUTOMÁTICO
+    # ============================================================
+
+    - name: Configurar root con contraseña
+      mysql_user:
+        name: root
+        host: localhost
+        password: "{{ db.root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        check_implicit_admin: yes
+        priv: "*.*:ALL,GRANT"
+        state: present
+
+    - name: Crear archivo /root/.my.cnf
+      copy:
+        dest: /root/.my.cnf
+        content: |
+          [client]
+          user=root
+          password={{ db.root_password }}
+        owner: root
+        group: root
+        mode: '0600'
+
+    # ============================================================
+    # CONFIGURAR BIND-ADDRESS PARA PERMITIR ACCESO EXTERNO
+    # ============================================================
+
+    - name: Configurar bind-address para permitir conexiones externas
+      replace:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        replace: "bind-address = 0.0.0.0"
+
+    - name: Reiniciar MySQL
+      service:
+        name: mysql
+        state: restarted
+
+    # ============================================================
+    # CREAR USUARIO DE APLICACIÓN PARA LOS FRONTENDS
+    # ============================================================
+
+    - name: Crear usuario de aplicación en MySQL
+      mysql_user:
+        name: "{{ db.user }}"
+        password: "{{ db.password }}"
+        host: "{{ item }}"
+        priv: "{{ db.name }}.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ db.root_password }}"
+      loop:
+        - "{{ ip.frontend1 }}"
+        - "{{ ip.frontend2 }}"
+        - "localhost"
+        - "%"

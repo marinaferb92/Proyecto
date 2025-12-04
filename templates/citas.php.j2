@@ -1,0 +1,155 @@
+<?php
+require_once 'config.php';
+require_once 'includes/auth.php';
+
+require_login();
+require_role(['admin','recepcionista','medico']);
+
+$pageTitle = "Citas";
+include 'includes/header.php';
+
+// Crear cita
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'nuevo') {
+
+    $stmt = $pdo->prepare("
+        INSERT INTO Citas (cliente_id, empleado_id, tratamiento_id, sala_id, fecha_cita, hora_cita, estado, observaciones)
+        VALUES (:cli, :emp, :tra, :sala, :fc, :hc, 'pendiente', :obs)
+    ");
+
+    $stmt->execute([
+        ':cli' => $_POST['cliente_id'],
+        ':emp' => $_POST['empleado_id'],
+        ':tra' => $_POST['tratamiento_id'],
+        ':sala' => $_POST['sala_id'] ?: null,
+        ':fc' => $_POST['fecha_cita'],
+        ':hc' => $_POST['hora_cita'],
+        ':obs' => $_POST['observaciones'] ?? null
+    ]);
+
+    echo "<div class='alert alert-success'>Cita creada.</div>";
+}
+
+$clientes = $pdo->query("SELECT * FROM Clientes ORDER BY nombre")->fetchAll();
+$empleados = $pdo->query("SELECT * FROM Empleados WHERE activo=1 ORDER BY nombre")->fetchAll();
+$tratamientos = $pdo->query("SELECT * FROM Tratamientos ORDER BY nombre")->fetchAll();
+$salas = $pdo->query("SELECT * FROM Salas ORDER BY nombre")->fetchAll();
+
+$citas = $pdo->query("
+    SELECT c.*, 
+           cli.nombre AS cli_nom, cli.apellido AS cli_ape,
+           e.nombre AS emp_nom, e.apellido AS emp_ape,
+           t.nombre AS trat_nom,
+           s.nombre AS sala_nom
+    FROM Citas c
+    JOIN Clientes cli ON c.cliente_id = cli.cliente_id
+    JOIN Empleados e ON c.empleado_id = e.empleado_id
+    JOIN Tratamientos t ON c.tratamiento_id = t.tratamiento_id
+    LEFT JOIN Salas s ON c.sala_id = s.sala_id
+    ORDER BY fecha_cita DESC, hora_cita DESC
+")->fetchAll();
+?>
+
+<div class="container mt-4">
+    <h3>Citas</h3>
+
+    <div class="row">
+
+        <!-- Formulario cita -->
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <form method="post">
+                        <input type="hidden" name="accion" value="nuevo">
+
+                        <label>Cliente *</label>
+                        <select name="cliente_id" class="form-control mb-2" required>
+                            <?php foreach($clientes as $c): ?>
+                                <option value="<?= $c['cliente_id'] ?>">
+                                    <?= $c['nombre'] . " " . $c['apellido'] ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+
+                        <label>Empleado *</label>
+                        <select name="empleado_id" class="form-control mb-2" required>
+                            <?php foreach($empleados as $e): ?>
+                                <option value="<?= $e['empleado_id'] ?>">
+                                    <?= $e['nombre'] . " " . $e['apellido'] ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+
+                        <label>Tratamiento *</label>
+                        <select name="tratamiento_id" class="form-control mb-2" required>
+                            <?php foreach($tratamientos as $t): ?>
+                                <option value="<?= $t['tratamiento_id'] ?>">
+                                    <?= $t['nombre'] ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+
+                        <label>Sala</label>
+                        <select name="sala_id" class="form-control mb-2">
+                            <option value="">Sin sala</option>
+                            <?php foreach($salas as $s): ?>
+                                <option value="<?= $s['sala_id'] ?>"><?= $s['nombre'] ?></option>
+                            <?php endforeach ?>
+                        </select>
+
+                        <label>Fecha *</label>
+                        <input type="date" name="fecha_cita" class="form-control mb-2" required>
+
+                        <label>Hora *</label>
+                        <input type="time" name="hora_cita" class="form-control mb-2" required>
+
+                        <label>Observaciones</label>
+                        <textarea name="observaciones" class="form-control mb-3"></textarea>
+
+                        <button class="btn btn-primary w-100">Guardar</button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Listado -->
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Empleado</th>
+                                <th>Tratamiento</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Sala</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach($citas as $c): ?>
+                            <tr>
+                                <td><?= $c['cli_nom']." ".$c['cli_ape'] ?></td>
+                                <td><?= $c['emp_nom']." ".$c['emp_ape'] ?></td>
+                                <td><?= $c['trat_nom'] ?></td>
+                                <td><?= $c['fecha_cita'] ?></td>
+                                <td><?= $c['hora_cita'] ?></td>
+                                <td><?= $c['sala_nom'] ?></td>
+                                <td><?= $c['estado'] ?></td>
+                            </tr>
+                        <?php endforeach ?>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<?php include 'includes/footer.php'; ?>

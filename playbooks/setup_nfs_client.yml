@@ -1,7 +1,8 @@
 ---
-- name: Montar NFS en servidores frontend
+- name: Configurar NFS Client
   hosts: frontend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
@@ -11,17 +12,10 @@
       apt:
         name: nfs-common
         state: present
-        update_cache: yes
 
-    - name: Crear media/
-      file:
-        path: /var/www/clinica_app/media
-        state: directory
-
-    - name: Montar NFS
+    - name: Montar directorio NFS
       mount:
-        src: "{{ hostvars['nfs1'].ansible_host }}:{{ nfs_export_dir }}"
-        path: /var/www/clinica_app/media
+        path: "{{ directories.shared_media }}"
+        src: "{{ ip.nfs_server }}:{{ directories.shared_media }}"
         fstype: nfs
-        opts: defaults
         state: mounted

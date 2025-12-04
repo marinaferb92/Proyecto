@@ -1,107 +1,32 @@
-# =========================
-# BACKEND / DATABASE
-# =========================
+ip:
+  frontend1: "10.0.2.116"
+  frontend2: "10.0.2.152"
 
-# Variables base
-db_name: clinica_db
-db_user: clinica_user
-db_password: "ClinicaPass123!"
+  backend1: "10.0.2.28"
+  backend2: "10.0.2.253"
 
-db_root_password: "RootDB123!"      # para MariaDB root
-db_admin_user: ansible_admin
-db_admin_password: "AdminSQL123!"
+  nfs_server: "10.0.2.57"
+  loadbalancer: "10.0.1.214"
 
-db_primary_host: backend1           # nombre del host en inventory
-db_replica_host: backend2
+network:
+  frontend_network: "10.0.2.0/24"
 
-db_repl_user: repl_user
-db_repl_password: "ReplPass123!"
+db:
+  name: clinica_db
+  user: clinica_user
+  password: ClinicaPass.123
+  root_password: RootPass123
+  replication_user: repl_user
+  replication_pass: ReplPass123
 
-# -------------------------
-# VARIABLES MYSQL
-# -------------------------
+directories:
+  app_dir: "/var/www/html/app"
+  shared_media: "/var/www/html/media"
+  www: "/var/www/html"
 
-# IMPORTANTE: IP REAL DEL BACKEND PRIMARIO
-mysql_host: "10.0.2.29"
-mysql_port: 3306
+certbot:
+  email: fernandezbonillamarina@gmail.com
+  domain: "miclinica.ddns.net"
 
-mysql_database: "{{ db_name }}"
-mysql_user: "{{ db_user }}"
-mysql_password: "{{ db_password }}"
-
-mysql_root_password: "{{ db_root_password }}"
-
-# =========================
-# DJANGO CONFIG
-# =========================
-django_project_name: clinica
-django_base_dir: /var/www/clinica_app
-django_project_dir: "{{ django_base_dir }}/{{ django_project_name }}"
-django_venv: "{{ django_base_dir }}/venv"
-django_settings_module: "{{ django_project_name }}.settings"
-
-django_user: www-data
-django_group: www-data
-
-django_secret_key: "CAMBIA_ESTO_POR_UNA_CLAVE_RANDOM"
-django_debug: false
-
-django_allowed_hosts:
-  - "localhost"
-  - "127.0.0.1"
-  - "*.ddns.net"
-  - "{{ hostvars['lb1'].ansible_host }}"
-  - "{{ hostvars['frontend1'].ansible_host }}"
-  - "{{ hostvars['frontend2'].ansible_host }}"
-
-django_static_root: "{{ django_base_dir }}/static"
-django_media_root: "{{ django_base_dir }}/media"
-django_templates_dir: "{{ django_base_dir }}/templates"
-
-gunicorn_bind_host: "127.0.0.1"
-gunicorn_bind_port: 8000
-gunicorn_workers: 3
-
-# =========================
-# NFS
-# =========================
-nfs_export_dir: /srv/nfs/clinica_media
-nfs_allowed_clients: "10.0.0.0/16"
-
-# ----------------------------
-# LET'S ENCRYPT / CERTBOT
-# ----------------------------
-certbot_email: "fernandezbonillamarina@gmail.com"
-domain_name: "miclinica.ddns.net"
-
-# =========================
-# LOCAL PATHS (control node)
-# =========================
-sql_dir: sql
-templates_dir: templates
-
-# =========================
-# DEMO USERS DJANGO
-# =========================
-django_demo_users:
-  admin_password: "AdminClinica.123"
-  medico1_password: "MedicoClinica.123"
-  recepcion1_password: "RecepcionClinica.123"
-  enfermero1_password: "EnfermeroClinica.123"
-
-# =============================
-# VARIABLES PARA LOAD BALANCER
-# =============================
-
-lb_nginx_conf_path: /etc/nginx/nginx.conf
-lb_sites_available: /etc/nginx/sites-available
-lb_sites_enabled: /etc/nginx/sites-enabled
-
-lb_server_name: miclinica.ddns.net
-
-# IPs REALES DE FRONTENDS
-frontend_servers:
-  - "10.0.2.49"      # frontend1
-  - "10.0.2.211"     # frontend2
-
-django_port: 8000
+apache:
+  service_name: apache2

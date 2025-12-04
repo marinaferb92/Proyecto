@@ -1,72 +1,159 @@
 ---
-- name: Instalar y configurar MariaDB (limpio e idempotente)
+- name: Instalar y configurar MySQL Backend (Maestro y Réplica)
   hosts: backend
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
-    - name: Instalar dependencias Python para mysql
+    ##########################################################
+    # INSTALACIÓN MYSQL + DEPENDENCIAS
+    ##########################################################
+
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+
+    - name: Instalar MySQL Server
+        ################################################################
+        # IMPORTANTE: No vuelve a reinstalar si ya existe (idempotente)
+        ################################################################
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Instalar dependencias MySQL para Ansible
       apt:
         name: python3-pymysql
         state: present
-        update_cache: yes
 
-    - name: Instalar MariaDB Server
+    - name: Instalar PHP CLI (para futuros hashes)
       apt:
-        name: mariadb-server
+        name: php-cli
         state: present
-        update_cache: yes
 
-    - name: Asegurar que MariaDB está arrancado
-      systemd:
-        name: mariadb
-        state: started
-        enabled: yes
 
-    - name: Establecer contraseña root si nunca se ha puesto
-      shell: >
-        mysql --user=root --execute="ALTER USER 'root'@'localhost'
-        IDENTIFIED BY '{{ db_root_password }}';"
-      args:
-        executable: /bin/bash
-      register: setroot
-      failed_when: false
-      changed_when: "'ERROR' not in setroot.stderr"
+    ##########################################################
+    # CONFIGURAR ROOT CON CONTRASEÑA
+    ##########################################################
 
-    - name: Crear /root/.my.cnf (para acceso root sin password)
+    - name: Configurar root con contraseña
+      mysql_user:
+        name: root
+        host: localhost
+        password: "{{ db.root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        check_implicit_admin: yes
+        priv: "*.*:ALL,GRANT"
+        state: present
+
+    - name: Crear archivo /root/.my.cnf
       copy:
         dest: /root/.my.cnf
-        mode: "0600"
         content: |
           [client]
           user=root
-          password={{ db_root_password }}
+          password={{ db.root_password }}
+        owner: root
+        group: root
+        mode: '0600'
 
-    - name: Crear usuario admin de Ansible
-      community.mysql.mysql_user:
-        name: "{{ db_admin_user }}"
-        password: "{{ db_admin_password }}"
+
+    ##########################################################
+    # CONFIGURAR BIND-ADDRESS + LOG_BIN + SERVER-ID
+    ##########################################################
+
+    - name: Asegurar bind-address correcto
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "^bind-address"
+        line: "bind-address = 0.0.0.0"
         state: present
+
+    - name: Activar binlog (log_bin)
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "^log_bin"
+        line: "log_bin = mysql-bin"
+        insertafter: "^#.*log_bin"
+        state: present
+
+    - name: Establecer server-id único por host
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "^server-id"
+        line: "server-id = {{ '1' if inventory_hostname == 'backend1' else '2' }}"
+        state: present
+
+
+    ##########################################################
+    # REINICIO MYSQL TRAS CONFIGURACIÓN
+    ##########################################################
+
+    - name: Reiniciar MySQL (tras configuración)
+      service:
+        name: mysql
+        state: restarted
+
+
+    ##########################################################
+    # CREACIÓN DEL USUARIO DE LA APLICACIÓN
+    ##########################################################
+
+    - name: Crear usuario MySQL para la aplicación
+      mysql_user:
+        name: "{{ db.user }}"
+        password: "{{ db.password }}"
+        host: "{{ item }}"
+        priv: "{{ db.name }}.*:ALL"
+        state: present
+      loop:
+        - "10.0.2.116"       # frontend1
+        - "10.0.2.152"       # frontend2
+        - "backend1"
+        - "backend2"
+        - "localhost"
+        - "%"
+
+
+    ##########################################################
+    # CONFIGURAR REPLICACIÓN — SOLO SI SOMOS backend2 (SLAVE)
+    ##########################################################
+    - name: Obtener binlog del maestro
+      shell: "mysql -u root -p{{ db.root_password }} -e 'SHOW MASTER STATUS\\G'"
+      register: master_status
+      when: inventory_hostname == "backend1"
+
+    - name: Guardar info del maestro en fact
+      set_fact:
+        master_file: "{{ master_status.stdout_lines | select('search', 'File:') | list | first | regex_replace('File: ', '') }}"
+        master_pos: "{{ master_status.stdout_lines | select('search', 'Position:') | list | first | regex_replace('Position: ', '') }}"
+      when: inventory_hostname == "backend1"
+
+    - name: Configurar replicación en el esclavo
+      shell: >
+        mysql -u root -p{{ db.root_password }} -e
+        "CHANGE REPLICATION SOURCE TO
+         SOURCE_HOST='{{ ip.backend1 }}',
+         SOURCE_USER='{{ db.replication_user }}',
+         SOURCE_PASSWORD='{{ db.replication_pass }}',
+         SOURCE_LOG_FILE='{{ hostvars['backend1'].master_file }}',
+         SOURCE_LOG_POS={{ hostvars['backend1'].master_pos }};
+         START REPLICA;"
+      when: inventory_hostname == "backend2"
+
+    ##########################################################
+    # CREAR USUARIO DE REPLICACIÓN EN backend1
+    ##########################################################
+
+    - name: Crear usuario de replicación en backend1 (maestro)
+      mysql_user:
+        name: "{{ db.replication_user }}"
+        password: "{{ db.replication_pass }}"
         host: "%"
-        priv: "*.*:ALL"
-        login_user: root
-        login_password: "{{ db_root_password }}"
-
-    - name: Crear base de datos del proyecto
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
+        priv: "*.*:REPLICATION SLAVE,REPLICATION CLIENT"
         state: present
-        login_user: root
-        login_password: "{{ db_root_password }}"
+      when: inventory_hostname == "backend1"
 
-    - name: Crear usuario del proyecto
-      community.mysql.mysql_user:
-        name: "{{ db_user }}"
-        password: "{{ db_password }}"
-        state: present
-        host: "%"
-        priv: "{{ db_name }}.*:ALL"
-        login_user: root
-        login_password: "{{ db_root_password }}"

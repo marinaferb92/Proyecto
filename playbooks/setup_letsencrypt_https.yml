@@ -1,33 +1,29 @@
 ---
-- name: Activar HTTPS con Let's Encrypt
+- name: Playbook para configurar HTTPS
   hosts: lb
   become: yes
+
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
-    - name: Instalar Certbot + plugin de nginx
+    - name: Desinstalar instalaciones previas de Certbot
       apt:
-        name:
-          - certbot
-          - python3-certbot-nginx
-        state: present
-        update_cache: true
+        name: certbot
+        state: absent
 
-    - name: Generar certificado SSL automáticamente
+    - name: Instalar Certbot con snap
+      command: snap install --classic certbot
+
+    - name: Crear un alias para el comando certbot
+      command: ln -s -f /snap/bin/certbot /usr/bin/certbot
+
+    - name: Solicitar y configurar certificado SSL/TLS a Let's Encrypt con certbot
       command:
-        cmd: >
-          certbot --nginx
-          -d {{ domain_name }}
-          --agree-tos
-          --email {{ certbot_email }}
-          --redirect
-          --non-interactive
-      register: certbot_output
-      failed_when: certbot_output.rc not in [0, 1]
-      changed_when: certbot_output.rc == 0
-
-    - name: Mostrar salida de certbot
-      debug:
-        msg: "{{ certbot_output.stdout }}"
+        certbot --nginx \
+        -m {{ certbot.email }} \
+        --agree-tos \
+        --no-eff-email \
+        --non-interactive \
+        -d {{ certbot.domain }}

@@ -1,0 +1,21 @@
+---
+- name: Crear usuario admin en la aplicación
+  hosts: backend1
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Generar hash PHP de la contraseña
+      shell: php -r 'echo password_hash("Admin123.", PASSWORD_DEFAULT);'
+      register: admin_hash
+
+    - name: Insertar usuario admin (solo si no existe)
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" {{ db.name }} -e "
+          INSERT INTO Usuarios (nombre_usuario, password_hash, rol, activo)
+          SELECT 'admin', '{{ admin_hash.stdout }}', 'admin', 1
+          WHERE NOT EXISTS (SELECT 1 FROM Usuarios WHERE nombre_usuario='admin');
+        "

@@ -1,9 +1,12 @@
 -- ============================================================
 -- ESTRUCTURA COMPLETA DE LA BASE DE DATOS - CLÍNICA ESTÉTICA
 -- ============================================================
-USE clinica_db;
-SET FOREIGN_KEY_CHECKS = 0;
 
+DROP DATABASE IF EXISTS clinica_db;
+CREATE DATABASE clinica_db;
+USE clinica_db;
+
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- DROP VISTAS
 DROP VIEW IF EXISTS vw_ingresos_mensuales;
@@ -331,6 +334,21 @@ CREATE TABLE EstadisticasDiarias (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================
+-- TABLA USUARIOS (para login en la app LAMP)
+-- =============================================
+
+CREATE TABLE Usuarios (
+    usuario_id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NULL,
+    nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    rol ENUM('admin','recepcionista','medico') NOT NULL DEFAULT 'recepcionista',
+    activo TINYINT(1) DEFAULT 1,
+    FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id)
+);
+
+
+-- =============================================
 -- ÍNDICES
 -- =============================================
 
@@ -536,4 +554,3 @@ BEGIN
 END$$
 
 DELIMITER ;
-

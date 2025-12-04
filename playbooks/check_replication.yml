@@ -1,0 +1,16 @@
+---
+- name: Verificar replicación MySQL
+  hosts: backend2
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Obtener estado del esclavo
+      shell: mysql -u root -p"{{ db.root_password }}" -e "SHOW REPLICA STATUS\G"
+      register: replica_status
+
+    - debug:
+        msg: "{{ replica_status.stdout }}"

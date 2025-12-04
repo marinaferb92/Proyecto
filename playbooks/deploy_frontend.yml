@@ -1,0 +1,49 @@
+---
+- name: Desplegar aplicación clínica en Frontends
+  hosts: frontend1,frontend2
+  become: yes
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Crear directorio web en /var/www/html
+      file:
+        path: "{{ directories.www }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Eliminar index.html si existe
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Copiar todos los archivos PHP generados desde templates
+      template:
+        src: "{{ item }}"
+        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2','') }}"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      with_fileglob:
+        - "../templates/*.php.j2"
+
+    - name: Copiar archivos estáticos (CSS/JS si los creas)
+      template:
+        src: "{{ item }}"
+        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2','') }}"
+      with_fileglob:
+        - "../templates/*.css.j2"
+        - "../templates/*.js.j2"
+      ignore_errors: yes
+
+    - name: Copiar .htaccess si existe
+      template:
+        src: "../templates/htaccess.j2"
+        dest: "{{ directories.www }}/.htaccess"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      ignore_errors: yes

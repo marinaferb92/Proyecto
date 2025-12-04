@@ -1,0 +1,40 @@
+---
+- name: Instalar LAMP en frontends
+  hosts: frontend
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Actualizar repos
+      apt:
+        update_cache: yes
+
+    - name: Instalar Apache y PHP
+      apt:
+        name:
+          - apache2
+          - php
+          - php-mysql
+          - libapache2-mod-php
+        state: present
+
+    - name: Crear directorio app
+      file:
+        path: "{{ directories.app_dir }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Habilitar rewrite
+      apache2_module:
+        name: rewrite
+        state: present
+
+    - name: Reiniciar Apache
+      service:
+        name: apache2
+        state: restarted
