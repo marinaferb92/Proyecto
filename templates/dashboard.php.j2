@@ -1,10 +1,20 @@
 <?php
-include "auth.php";
-$pageTitle = "Panel de Control";
+require "auth.php";
+$pageTitle = "Dashboard";
 include "header.php";
+include "navbar.php";
 ?>
 
-<h2>Bienvenido al Panel de Control</h2>
-<p class="lead">Selecciona una opción del menú superior.</p>
+<div class="container mt-4">
+    <h2>Panel de Control</h2>
+    <p class="lead">Bienvenido, <?= $_SESSION["user"] ?></p>
+
+    <div class="row">
+        <div class="col-md-3"><a href="clientes.php" class="card p-3 shadow text-center">Clientes</a></div>
+        <div class="col-md-3"><a href="empleados.php" class="card p-3 shadow text-center">Empleados</a></div>
+        <div class="col-md-3"><a href="tratamientos.php" class="card p-3 shadow text-center">Tratamientos</a></div>
+        <div class="col-md-3"><a href="citas.php" class="card p-3 shadow text-center">Citas</a></div>
+    </div>
+</div>
 
 <?php include "footer.php"; ?>

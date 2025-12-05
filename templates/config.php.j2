@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '/var/www/html/session_handler.php';
 
 $DB_HOST = "{{ ip.backend1 }}";
 $DB_NAME = "{{ db.name }}";
@@ -19,4 +19,17 @@ try {
 } catch (PDOException $e) {
     die("Error de conexión: " . $e->getMessage());
 }
+
+// Usar el MySQLSessionHandler
+session_set_save_handler(
+    new MySQLSessionHandler(
+        '{{ ip.backend1 }}',
+        '{{ db.name }}',
+        '{{ db.user }}',
+        '{{ db.password }}'
+    ),
+    true
+);
+
+session_start();
 ?>

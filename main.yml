@@ -1,19 +1,74 @@
 ---
+# ==========================================================
+# MAIN PLAYBOOK — CLÍNICA ESTÉTICA
+# Orquestación completa del stack
+# ==========================================================
+
 - name: Cargar variables globales
   hosts: localhost
-  gather_facts: false
   vars_files:
     - vars/variables.yml
   tasks:
     - debug:
         msg: "Variables cargadas correctamente"
 
+# ==========================================================
+# BACKEND — MYSQL MAESTRO + RÉPLICA
+# ==========================================================
+
 - import_playbook: playbooks/setup_backend.yml
+
+# ==========================================================
+# IMPORTACIÓN SQL COMPLETA
+# (solo backend1 maestro)
+# ==========================================================
+
 - import_playbook: playbooks/deploy_backend.yml
+
+# ==========================================================
+# MANTENER SESIONES FRONTENDS
+# ==========================================================
+
+- import_playbook: playbooks/setup_sessions.yml
+
+# ==========================================================
+# CREAR USUARIO ADMIN EN LA APP
+# ==========================================================
+
 - import_playbook: playbooks/create_admin_user.yml
+
+# ==========================================================
+# NFS SERVER
+# ==========================================================
+
 - import_playbook: playbooks/setup_nfs.yml
+
+# ==========================================================
+# NFS CLIENTS (Frontends)
+# ==========================================================
+
 - import_playbook: playbooks/setup_nfs_client.yml
+
+# ==========================================================
+# FRONTENDS — LAMP + ESTRUCTURA APP
+# ==========================================================
+
 - import_playbook: playbooks/setup_frontend.yml
+
+# ==========================================================
+# DEPLOY PHP
+# ==========================================================
+
 - import_playbook: playbooks/deploy_frontend.yml
+
+# ==========================================================
+# LOAD BALANCER NGINX
+# ==========================================================
+
 - import_playbook: playbooks/setup_loadbalancer.yml
+
+# ==========================================================
+# HTTPS — CERTBOT
+# ==========================================================
+
 - import_playbook: playbooks/setup_letsencrypt_https.yml

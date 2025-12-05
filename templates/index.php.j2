@@ -1,60 +1,42 @@
 <?php
-$pageTitle = "Acceso a la clínica";
-include "config.php";
-
-session_start();
+require "config.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    
+    $user = $_POST["usuario"];
+    $pass = $_POST["password"];
 
-    $username = $_POST["usuario"] ?? "";
-    $password = $_POST["password"] ?? "";
+    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE nombre_usuario = ? AND activo = 1 LIMIT 1");
+    $stmt->execute([$user]);
+    $row = $stmt->fetch();
 
-    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE nombre_usuario = ? AND activo = 1");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-
-    if ($user && password_verify($password, $user["password_hash"])) {
-
-        $_SESSION["usuario"] = $user["nombre_usuario"];
-        $_SESSION["rol"] = $user["rol"];
-
+    if ($row && password_verify($pass, $row["password_hash"])) {
+        $_SESSION["user"] = $row["nombre_usuario"];
+        $_SESSION["rol"] = $row["rol"];
         header("Location: dashboard.php");
         exit;
     }
 
     $error = "Usuario o contraseña incorrectos";
 }
-
-include "header.php";
 ?>
 
-<div class="row justify-content-center">
-    <div class="col-md-4">
+<?php $pageTitle="Iniciar Sesión"; include "header.php"; ?>
+<div class="container col-md-4 mt-5 p-4 shadow bg-white rounded">
+    <h3 class="text-center">Acceso</h3>
 
-        <div class="card shadow">
-            <div class="card-body">
+    <?php if(isset($error)): ?>
+    <div class="alert alert-danger text-center"><?= $error ?></div>
+    <?php endif; ?>
 
-                <h3 class="text-center mb-4">Acceso</h3>
+    <form method="POST">
+        <label>Usuario</label>
+        <input class="form-control mb-3" type="text" name="usuario" required>
 
-                <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?= $error ?></div>
-                <?php endif; ?>
+        <label>Contraseña</label>
+        <input class="form-control mb-4" type="password" name="password" required>
 
-                <form method="POST">
-
-                    <label class="form-label">Usuario</label>
-                    <input class="form-control" type="text" name="usuario" required>
-
-                    <label class="form-label mt-3">Contraseña</label>
-                    <input class="form-control" type="password" name="password" required>
-
-                    <button class="btn btn-primary w-100 mt-4">Entrar</button>
-                </form>
-
-            </div>
-        </div>
-
-    </div>
+        <button class="btn btn-primary w-100">Entrar</button>
+    </form>
 </div>
-
 <?php include "footer.php"; ?>

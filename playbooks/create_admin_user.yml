@@ -8,14 +8,25 @@
 
   tasks:
 
+    # 1. Generar hash PHP de la contraseña
     - name: Generar hash PHP de la contraseña
       shell: php -r 'echo password_hash("Admin123.", PASSWORD_DEFAULT);'
       register: admin_hash
 
+    # 2. Insertar usuario admin (solo si no existe)
     - name: Insertar usuario admin (solo si no existe)
-      shell: |
-        mysql -u root -p"{{ db.root_password }}" {{ db.name }} -e "
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
           INSERT INTO Usuarios (nombre_usuario, password_hash, rol, activo)
           SELECT 'admin', '{{ admin_hash.stdout }}', 'admin', 1
           WHERE NOT EXISTS (SELECT 1 FROM Usuarios WHERE nombre_usuario='admin');
-        "
+      when: admin_hash.stdout is defined
+
+    # 3. Verificar la contraseña generada
+    - name: Verificar contraseña generada
+      debug:
+        msg: "El hash de la contraseña generado es: {{ admin_hash.stdout }}"
+      when: admin_hash.stdout is defined

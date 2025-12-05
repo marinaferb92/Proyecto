@@ -1,40 +1,63 @@
 ---
-- name: Instalar LAMP en frontends
+- name: Setup Apache, PHP and Session Handler Configuration
   hosts: frontend
   become: yes
-
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
-    - name: Actualizar repos
-      apt:
-        update_cache: yes
-
-    - name: Instalar Apache y PHP
+    # Instalar Apache y PHP
+    - name: Install Apache and required PHP packages
       apt:
         name:
           - apache2
           - php
+          - php-cli
           - php-mysql
+          - php-json
+          - php-xml
+          - php-mbstring
           - libapache2-mod-php
+          - php-gd
+          - php-curl
+          - php-zip
+          - php-intl
         state: present
 
-    - name: Crear directorio app
-      file:
-        path: "{{ directories.app_dir }}"
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
+    - name: Ensure PHP module is enabled
+      command: "a2enmod php8.3"
+      when: ansible_facts.packages['php8.3'] is not defined
+      ignore_errors: yes
 
-    - name: Habilitar rewrite
-      apache2_module:
-        name: rewrite
-        state: present
+    # Configuración de Apache (habilitar mod_rewrite, configuración del sitio)
+    - name: Enable mod_rewrite and configure Apache site
+      copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot /var/www/html
 
-    - name: Reiniciar Apache
+              <Directory /var/www/html>
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+
+              ErrorLog ${APACHE_LOG_DIR}/error.log
+              CustomLog ${APACHE_LOG_DIR}/access.log combined
+          </VirtualHost>
+      notify: restart_apache
+
+
+    # Actualizar php.ini para manejar sesiones correctamente
+    - name: Update php.ini for session handler
+      template:
+        src: ../templates/php.ini.j2
+        dest: /etc/php/8.3/apache2/php.ini
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
       service:
         name: apache2
         state: restarted

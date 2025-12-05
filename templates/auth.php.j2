@@ -1,14 +1,21 @@
 <?php
-session_start();
+if (isset($_POST['username']) && isset($_POST['password'])) {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
 
-if (!isset($_SESSION["usuario"])) {
-    header("Location: index.php");
-    exit;
-}
+    $stmt = $pdo->prepare("SELECT password_hash FROM Usuarios WHERE nombre_usuario = ?");
+    $stmt->execute([$username]);
+    $stored_hash = $stmt->fetchColumn();
 
-function requireRole($roles = []) {
-    if (!in_array($_SESSION["rol"], $roles)) {
-        die("No tienes permisos para acceder a esta sección.");
+    if (password_verify($password, $stored_hash)) {
+        $_SESSION["usuario"] = $username;
+        header("Location: dashboard.php");
+        exit;
+    } else {
+        echo "Usuario o contraseña incorrecta.";
     }
+} else {
+    echo "";
 }
 ?>
+

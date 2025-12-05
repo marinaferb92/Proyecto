@@ -1,4 +1,4 @@
----
+---  
 - name: Instalar y configurar MySQL Backend (Maestro y Réplica)
   hosts: backend
   become: yes
@@ -9,7 +9,7 @@
   tasks:
 
     ##########################################################
-    # INSTALACIÓN MYSQL + DEPENDENCIAS
+    # 1. INSTALACIÓN MYSQL
     ##########################################################
 
     - name: Actualizar repositorios
@@ -17,9 +17,6 @@
         update_cache: yes
 
     - name: Instalar MySQL Server
-        ################################################################
-        # IMPORTANTE: No vuelve a reinstalar si ya existe (idempotente)
-        ################################################################
       apt:
         name: mysql-server
         state: present
@@ -29,80 +26,68 @@
         name: python3-pymysql
         state: present
 
-    - name: Instalar PHP CLI (para futuros hashes)
+    - name: Instalar PHP CLI
       apt:
         name: php-cli
         state: present
 
-
     ##########################################################
-    # CONFIGURAR ROOT CON CONTRASEÑA
+    # 2. CONFIG ROOT
     ##########################################################
 
-    - name: Configurar root con contraseña
+    - name: Configurar root con password
       mysql_user:
         name: root
-        host: localhost
         password: "{{ db.root_password }}"
+        host: localhost
         login_unix_socket: /var/run/mysqld/mysqld.sock
         check_implicit_admin: yes
         priv: "*.*:ALL,GRANT"
         state: present
 
-    - name: Crear archivo /root/.my.cnf
+    - name: Crear /root/.my.cnf
       copy:
         dest: /root/.my.cnf
+        mode: '0600'
+        owner: root
+        group: root
         content: |
           [client]
           user=root
           password={{ db.root_password }}
-        owner: root
-        group: root
-        mode: '0600'
-
 
     ##########################################################
-    # CONFIGURAR BIND-ADDRESS + LOG_BIN + SERVER-ID
+    # 3. CONFIGURAR BIND + BINLOG + SERVER ID
     ##########################################################
 
-    - name: Asegurar bind-address correcto
+    - name: Permitir conexiones externas
       lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: "^bind-address"
-        line: "bind-address = 0.0.0.0"
-        state: present
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
 
-    - name: Activar binlog (log_bin)
+    - name: Activar log_bin
       lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: "^log_bin"
-        line: "log_bin = mysql-bin"
-        insertafter: "^#.*log_bin"
-        state: present
+        regexp: '^log_bin'
+        line: 'log_bin = mysql-bin'
 
-    - name: Establecer server-id único por host
+    - name: Configurar server-id
       lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: "^server-id"
+        regexp: '^server-id'
         line: "server-id = {{ '1' if inventory_hostname == 'backend1' else '2' }}"
-        state: present
 
-
-    ##########################################################
-    # REINICIO MYSQL TRAS CONFIGURACIÓN
-    ##########################################################
-
-    - name: Reiniciar MySQL (tras configuración)
+    - name: Reiniciar MySQL
       service:
         name: mysql
         state: restarted
 
-
     ##########################################################
-    # CREACIÓN DEL USUARIO DE LA APLICACIÓN
+    # 4. USUARIO DE APLICACIÓN
     ##########################################################
 
-    - name: Crear usuario MySQL para la aplicación
+    - name: Crear usuario de la aplicación
       mysql_user:
         name: "{{ db.user }}"
         password: "{{ db.password }}"
@@ -110,50 +95,71 @@
         priv: "{{ db.name }}.*:ALL"
         state: present
       loop:
-        - "10.0.2.116"       # frontend1
-        - "10.0.2.152"       # frontend2
-        - "backend1"
-        - "backend2"
-        - "localhost"
+        - "{{ ip.frontend1 }}"
+        - "{{ ip.frontend2 }}"
         - "%"
-
-
-    ##########################################################
-    # CONFIGURAR REPLICACIÓN — SOLO SI SOMOS backend2 (SLAVE)
-    ##########################################################
-    - name: Obtener binlog del maestro
-      shell: "mysql -u root -p{{ db.root_password }} -e 'SHOW MASTER STATUS\\G'"
-      register: master_status
-      when: inventory_hostname == "backend1"
-
-    - name: Guardar info del maestro en fact
-      set_fact:
-        master_file: "{{ master_status.stdout_lines | select('search', 'File:') | list | first | regex_replace('File: ', '') }}"
-        master_pos: "{{ master_status.stdout_lines | select('search', 'Position:') | list | first | regex_replace('Position: ', '') }}"
-      when: inventory_hostname == "backend1"
-
-    - name: Configurar replicación en el esclavo
-      shell: >
-        mysql -u root -p{{ db.root_password }} -e
-        "CHANGE REPLICATION SOURCE TO
-         SOURCE_HOST='{{ ip.backend1 }}',
-         SOURCE_USER='{{ db.replication_user }}',
-         SOURCE_PASSWORD='{{ db.replication_pass }}',
-         SOURCE_LOG_FILE='{{ hostvars['backend1'].master_file }}',
-         SOURCE_LOG_POS={{ hostvars['backend1'].master_pos }};
-         START REPLICA;"
-      when: inventory_hostname == "backend2"
+        - "localhost"
 
     ##########################################################
-    # CREAR USUARIO DE REPLICACIÓN EN backend1
+    # 5. USUARIO DE REPLICACIÓN (ONLY backend1)
     ##########################################################
 
-    - name: Crear usuario de replicación en backend1 (maestro)
+    - name: Crear usuario de replicación (solo backend1)
       mysql_user:
         name: "{{ db.replication_user }}"
         password: "{{ db.replication_pass }}"
         host: "%"
         priv: "*.*:REPLICATION SLAVE,REPLICATION CLIENT"
         state: present
+      when: inventory_hostname == 'backend1'
+
+    ##########################################################
+    # 6. EXTRAER BINLOG + POS
+    ##########################################################
+
+    - name: Obtener estado maestro
+      shell: mysql -u root -p"{{ db.root_password }}" -e "SHOW MASTER STATUS\G"
+      register: master_status
+      changed_when: false
       when: inventory_hostname == "backend1"
 
+    # EXTRAER CORRECTAMENTE SIN LISTAS
+    - name: Registrar archivo binlog (string)
+      set_fact:
+        binlog_file: "{{ master_status.stdout | regex_search('File: (.*)') | trim }}"
+      when: inventory_hostname == 'backend1'
+
+    - name: Registrar posición binlog (string)
+      set_fact:
+        binlog_pos: "{{ master_status.stdout | regex_search('Position: (.*)') | trim | int }}"
+      when: inventory_hostname == 'backend1'
+
+    ##########################################################
+    # 7. CONFIGURE REPLICA backend2
+    ##########################################################
+
+    - name: Parar replicación si existe
+      shell: mysql -u root -p"{{ db.root_password }}" -e "STOP REPLICA;"
+      ignore_errors: true
+      when: inventory_hostname == "backend2"
+
+    - name: Resetear replicación
+      shell: mysql -u root -p"{{ db.root_password }}" -e "RESET REPLICA ALL;"
+      ignore_errors: true
+      when: inventory_hostname == "backend2"
+
+    - name: Aplicar CHANGE REPLICATION SOURCE TO
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" -e "
+          CHANGE REPLICATION SOURCE TO
+            SOURCE_HOST='{{ ip.backend1 }}',
+            SOURCE_USER='{{ db.replication_user }}',
+            SOURCE_PASSWORD='{{ db.replication_pass }}',
+            SOURCE_LOG_FILE='{{ hostvars['backend1']['binlog_file'] }}',
+            SOURCE_LOG_POS={{ hostvars['backend1']['binlog_pos'] }};
+        "
+      when: inventory_hostname == "backend2"
+
+    - name: Iniciar replicación
+      shell: mysql -u root -p"{{ db.root_password }}" -e "START REPLICA;"
+      when: inventory_hostname == "backend2"

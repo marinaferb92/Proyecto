@@ -1,36 +1,141 @@
 <?php
-include "auth.php";
-requireRole(["admin"]);
-$pageTitle = "Empleados";
+require "auth.php";
+require "config.php";
+$pageTitle="Empleados";
 include "header.php";
-include "config.php";
+include "navbar.php";
 
-$empleados = $pdo->query("
-    SELECT e.*, c.nombre AS categoria
-    FROM Empleados e
-    LEFT JOIN CategoriasEmpleados c ON e.categoria_id = c.categoria_id
-")->fetchAll();
+# --- CREAR EMPLEADO ---
+if (isset($_POST["add"])) {
+    $stmt = $pdo->prepare("
+        INSERT INTO Empleados(nombre, apellido, telefono, email, categoria_id)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $_POST["nombre"],
+        $_POST["apellido"],
+        $_POST["telefono"],
+        $_POST["email"],
+        $_POST["categoria"]
+    ]);
+}
+
+# --- ELIMINAR ---
+if (isset($_POST["delete"])) {
+    $stmt = $pdo->prepare("DELETE FROM Empleados WHERE empleado_id = ?");
+    $stmt->execute([$_POST["id"]]);
+}
+
+# --- EDITAR ---
+if (isset($_POST["edit"])) {
+    $stmt = $pdo->prepare("
+        UPDATE Empleados SET nombre=?, apellido=?, telefono=?, email=?, categoria_id=?
+        WHERE empleado_id=?
+    ");
+    $stmt->execute([
+        $_POST["nombre_edit"],
+        $_POST["apellido_edit"],
+        $_POST["telefono_edit"],
+        $_POST["email_edit"],
+        $_POST["categoria_edit"],
+        $_POST["id"]
+    ]);
+}
+
+# Obtener categorías + empleados
+$categorias = $pdo->query("SELECT * FROM CategoriasEmpleados ORDER BY categoria_id")->fetchAll();
+$empleados = $pdo->query("SELECT e.*, c.nombre AS categoria 
+                          FROM Empleados e
+                          LEFT JOIN CategoriasEmpleados c ON e.categoria_id = c.categoria_id
+                          ORDER BY empleado_id DESC")->fetchAll();
 ?>
+
+<div class="container mt-4">
 
 <h2>Empleados</h2>
 
-<table class="table table-bordered">
-<thead>
-<tr>
-<th>ID</th><th>Nombre</th><th>Email</th><th>Categoría</th><th>Activo</th>
-</tr>
-</thead>
-<tbody>
-<?php foreach ($empleados as $e): ?>
-<tr>
-<td><?= $e["empleado_id"] ?></td>
-<td><?= $e["nombre"] . " " . $e["apellido"] ?></td>
-<td><?= $e["email"] ?></td>
-<td><?= $e["categoria"] ?></td>
-<td><?= $e["activo"] ? "Sí" : "No" ?></td>
-</tr>
-<?php endforeach; ?>
-</tbody>
+<form method="POST" class="card p-3 shadow mb-4">
+    <h5>Añadir Empleado</h5>
+
+    <div class="row">
+        <div class="col-md-6"><input required name="nombre" placeholder="Nombre" class="form-control mb-2"></div>
+        <div class="col-md-6"><input required name="apellido" placeholder="Apellido" class="form-control mb-2"></div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6"><input name="telefono" placeholder="Teléfono" class="form-control mb-2"></div>
+        <div class="col-md-6"><input name="email" placeholder="Email" class="form-control mb-2"></div>
+    </div>
+
+    <select name="categoria" class="form-control mb-3">
+        <?php foreach($categorias as $cat): ?>
+            <option value="<?= $cat['categoria_id'] ?>"><?= $cat['nombre'] ?></option>
+        <?php endforeach; ?>
+    </select>
+
+    <button name="add" class="btn btn-primary w-100">Guardar</button>
+</form>
+
+<table class="table table-bordered shadow bg-white">
+    <tr>
+        <th>ID</th><th>Nombre</th><th>Apellido</th><th>Teléfono</th><th>Email</th><th>Categoría</th><th>Acciones</th>
+    </tr>
+
+    <?php foreach($empleados as $e): ?>
+    <tr>
+        <td><?= $e["empleado_id"] ?></td>
+        <td><?= $e["nombre"] ?></td>
+        <td><?= $e["apellido"] ?></td>
+        <td><?= $e["telefono"] ?></td>
+        <td><?= $e["email"] ?></td>
+        <td><?= $e["categoria"] ?></td>
+
+        <td style="width:200px;">
+            <!-- Editar -->
+            <button class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#editModal<?= $e['empleado_id'] ?>">Editar</button>
+
+            <!-- Eliminar -->
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="id" value="<?= $e['empleado_id'] ?>">
+                <button name="delete" class="btn btn-danger btn-sm"
+                        onclick="return confirm('¿Eliminar empleado?')">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+
+    <!-- Modal de edición -->
+    <div class="modal fade" id="editModal<?= $e['empleado_id'] ?>">
+      <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <form method="POST">
+                <h5>Editar empleado</h5>
+
+                <input type="hidden" name="id" value="<?= $e['empleado_id'] ?>">
+
+                <input name="nombre_edit" value="<?= $e['nombre'] ?>" class="form-control mb-2">
+                <input name="apellido_edit" value="<?= $e['apellido'] ?>" class="form-control mb-2">
+                <input name="telefono_edit" value="<?= $e['telefono'] ?>" class="form-control mb-2">
+                <input name="email_edit" value="<?= $e['email'] ?>" class="form-control mb-2">
+
+                <select name="categoria_edit" class="form-control mb-3">
+                    <?php foreach($categorias as $cat): ?>
+                    <option value="<?= $cat['categoria_id'] ?>" 
+                        <?= $cat['categoria_id']==$e['categoria_id']?"selected":"" ?>>
+                        <?= $cat['nombre'] ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <button name="edit" class="btn btn-success w-100">Guardar cambios</button>
+            </form>
+        </div>
+      </div>
+    </div>
+
+    <?php endforeach; ?>
 </table>
+
+</div>
 
 <?php include "footer.php"; ?>

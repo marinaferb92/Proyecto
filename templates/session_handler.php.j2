@@ -1,0 +1,54 @@
+<?php
+
+class MySQLSessionHandler implements SessionHandlerInterface
+{
+    private $pdo;
+
+    public function open($savePath, $sessionName)
+    {
+        $this->pdo = new PDO(
+            "mysql:host={{ ip.backend1 }};dbname={{ db.name }}",
+            "{{ db.user }}",
+            "{{ db.password }}"
+        );
+        return true;
+    }
+
+    public function close()
+    {
+        $this->pdo = null;
+        return true;
+    }
+
+    public function read($id)
+    {
+        $stmt = $this->pdo->prepare("SELECT data FROM php_sessions WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetchColumn();
+        return $row ? $row : '';
+    }
+
+    public function write($id, $data)
+    {
+        $timestamp = time();
+        $stmt = $this->pdo->prepare("
+            REPLACE INTO php_sessions (id, data, timestamp)
+            VALUES (?, ?, ?)
+        ");
+        return $stmt->execute([$id, $data, $timestamp]);
+    }
+
+    public function destroy($id)
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM php_sessions WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    public function gc($maxLifetime)
+    {
+        $old = time() - $maxLifetime;
+        $stmt = $this->pdo->prepare("DELETE FROM php_sessions WHERE timestamp < ?");
+        return $stmt->execute([$old]);
+    }
+}
+?>

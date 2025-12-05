@@ -1,155 +1,181 @@
 <?php
-require_once 'config.php';
-require_once 'includes/auth.php';
+require "auth.php";
+require "config.php";
+$pageTitle="Citas";
+include "header.php";
+include "navbar.php";
 
-require_login();
-require_role(['admin','recepcionista','medico']);
-
-$pageTitle = "Citas";
-include 'includes/header.php';
-
-// Crear cita
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'nuevo') {
-
+# --- AÑADIR CITA ---
+if (isset($_POST["add"])) {
     $stmt = $pdo->prepare("
-        INSERT INTO Citas (cliente_id, empleado_id, tratamiento_id, sala_id, fecha_cita, hora_cita, estado, observaciones)
-        VALUES (:cli, :emp, :tra, :sala, :fc, :hc, 'pendiente', :obs)
+        INSERT INTO Citas(cliente_id, empleado_id, tratamiento_id, fecha_cita, hora_cita, estado)
+        VALUES (?, ?, ?, ?, ?, 'pendiente')
     ");
-
     $stmt->execute([
-        ':cli' => $_POST['cliente_id'],
-        ':emp' => $_POST['empleado_id'],
-        ':tra' => $_POST['tratamiento_id'],
-        ':sala' => $_POST['sala_id'] ?: null,
-        ':fc' => $_POST['fecha_cita'],
-        ':hc' => $_POST['hora_cita'],
-        ':obs' => $_POST['observaciones'] ?? null
+        $_POST["cliente"],
+        $_POST["empleado"],
+        $_POST["tratamiento"],
+        $_POST["fecha"],
+        $_POST["hora"]
     ]);
-
-    echo "<div class='alert alert-success'>Cita creada.</div>";
 }
 
+# --- BORRAR ---
+if (isset($_POST["delete"])) {
+    $stmt = $pdo->prepare("DELETE FROM Citas WHERE cita_id = ?");
+    $stmt->execute([$_POST["id"]]);
+}
+
+# --- EDITAR ---
+if (isset($_POST["edit"])) {
+    $stmt = $pdo->prepare("
+        UPDATE Citas SET cliente_id=?, empleado_id=?, tratamiento_id=?, fecha_cita=?, hora_cita=?, estado=?
+        WHERE cita_id=?
+    ");
+    $stmt->execute([
+        $_POST["cliente_edit"],
+        $_POST["empleado_edit"],
+        $_POST["tratamiento_edit"],
+        $_POST["fecha_edit"],
+        $_POST["hora_edit"],
+        $_POST["estado_edit"],
+        $_POST["id"]
+    ]);
+}
+
+# DATOS
 $clientes = $pdo->query("SELECT * FROM Clientes ORDER BY nombre")->fetchAll();
-$empleados = $pdo->query("SELECT * FROM Empleados WHERE activo=1 ORDER BY nombre")->fetchAll();
+$empleados = $pdo->query("SELECT * FROM Empleados ORDER BY nombre")->fetchAll();
 $tratamientos = $pdo->query("SELECT * FROM Tratamientos ORDER BY nombre")->fetchAll();
-$salas = $pdo->query("SELECT * FROM Salas ORDER BY nombre")->fetchAll();
 
 $citas = $pdo->query("
-    SELECT c.*, 
-           cli.nombre AS cli_nom, cli.apellido AS cli_ape,
-           e.nombre AS emp_nom, e.apellido AS emp_ape,
-           t.nombre AS trat_nom,
-           s.nombre AS sala_nom
+    SELECT c.*, cli.nombre AS cliente, cli.apellido AS cliente_ap,
+           e.nombre AS empleado, e.apellido AS empleado_ap,
+           t.nombre AS tratamiento
     FROM Citas c
-    JOIN Clientes cli ON c.cliente_id = cli.cliente_id
-    JOIN Empleados e ON c.empleado_id = e.empleado_id
-    JOIN Tratamientos t ON c.tratamiento_id = t.tratamiento_id
-    LEFT JOIN Salas s ON c.sala_id = s.sala_id
-    ORDER BY fecha_cita DESC, hora_cita DESC
+    JOIN Clientes cli ON cli.cliente_id = c.cliente_id
+    JOIN Empleados e ON e.empleado_id = c.empleado_id
+    JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
+    ORDER BY cita_id DESC
 ")->fetchAll();
+
 ?>
 
 <div class="container mt-4">
-    <h3>Citas</h3>
 
-    <div class="row">
+<h2>Citas</h2>
 
-        <!-- Formulario cita -->
-        <div class="col-md-5">
-            <div class="card shadow-sm">
-                <div class="card-body">
+<form method="POST" class="card p-3 shadow mb-4">
 
-                    <form method="post">
-                        <input type="hidden" name="accion" value="nuevo">
+    <h5>Nueva cita</h5>
 
-                        <label>Cliente *</label>
-                        <select name="cliente_id" class="form-control mb-2" required>
-                            <?php foreach($clientes as $c): ?>
-                                <option value="<?= $c['cliente_id'] ?>">
-                                    <?= $c['nombre'] . " " . $c['apellido'] ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
+    <select name="cliente" class="form-control mb-2">
+        <?php foreach($clientes as $c): ?>
+            <option value="<?= $c['cliente_id'] ?>"><?= $c["nombre"] ?> <?= $c["apellido"] ?></option>
+        <?php endforeach; ?>
+    </select>
 
-                        <label>Empleado *</label>
-                        <select name="empleado_id" class="form-control mb-2" required>
-                            <?php foreach($empleados as $e): ?>
-                                <option value="<?= $e['empleado_id'] ?>">
-                                    <?= $e['nombre'] . " " . $e['apellido'] ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
+    <select name="empleado" class="form-control mb-2">
+        <?php foreach($empleados as $e): ?>
+            <option value="<?= $e['empleado_id'] ?>"><?= $e["nombre"] ?> <?= $e["apellido"] ?></option>
+        <?php endforeach; ?>
+    </select>
 
-                        <label>Tratamiento *</label>
-                        <select name="tratamiento_id" class="form-control mb-2" required>
-                            <?php foreach($tratamientos as $t): ?>
-                                <option value="<?= $t['tratamiento_id'] ?>">
-                                    <?= $t['nombre'] ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
+    <select name="tratamiento" class="form-control mb-2">
+        <?php foreach($tratamientos as $t): ?>
+            <option value="<?= $t['tratamiento_id'] ?>"><?= $t["nombre"] ?></option>
+        <?php endforeach; ?>
+    </select>
 
-                        <label>Sala</label>
-                        <select name="sala_id" class="form-control mb-2">
-                            <option value="">Sin sala</option>
-                            <?php foreach($salas as $s): ?>
-                                <option value="<?= $s['sala_id'] ?>"><?= $s['nombre'] ?></option>
-                            <?php endforeach ?>
-                        </select>
+    <input name="fecha" type="date" class="form-control mb-2">
+    <input name="hora" type="time" class="form-control mb-3">
 
-                        <label>Fecha *</label>
-                        <input type="date" name="fecha_cita" class="form-control mb-2" required>
+    <button name="add" class="btn btn-primary w-100">Guardar</button>
+</form>
 
-                        <label>Hora *</label>
-                        <input type="time" name="hora_cita" class="form-control mb-2" required>
+<table class="table table-bordered shadow bg-white">
+    <tr>
+        <th>ID</th><th>Cliente</th><th>Empleado</th><th>Tratamiento</th>
+        <th>Fecha</th><th>Hora</th><th>Estado</th><th>Acciones</th>
+    </tr>
 
-                        <label>Observaciones</label>
-                        <textarea name="observaciones" class="form-control mb-3"></textarea>
+    <?php foreach($citas as $c): ?>
+    <tr>
+        <td><?= $c["cita_id"] ?></td>
+        <td><?= $c["cliente"] ?> <?= $c["cliente_ap"] ?></td>
+        <td><?= $c["empleado"] ?> <?= $c["empleado_ap"] ?></td>
+        <td><?= $c["tratamiento"] ?></td>
+        <td><?= $c["fecha_cita"] ?></td>
+        <td><?= $c["hora_cita"] ?></td>
+        <td><?= $c["estado"] ?></td>
 
-                        <button class="btn btn-primary w-100">Guardar</button>
-                    </form>
+        <td style="width:200px;">
+            <button class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#editModal<?= $c['cita_id'] ?>">Editar</button>
 
-                </div>
-            </div>
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="id" value="<?= $c['cita_id'] ?>">
+                <button name="delete" class="btn btn-danger btn-sm"
+                        onclick="return confirm('¿Eliminar cita?')">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+
+    <!-- Modal edición -->
+    <div class="modal fade" id="editModal<?= $c['cita_id'] ?>">
+      <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <form method="POST">
+                <input type="hidden" name="id" value="<?= $c['cita_id'] ?>">
+
+                <h5>Editar cita</h5>
+
+                <select name="cliente_edit" class="form-control mb-2">
+                    <?php foreach($clientes as $cli): ?>
+                        <option value="<?= $cli['cliente_id'] ?>"
+                            <?= $cli['cliente_id']==$c["cliente_id"]?"selected":"" ?>>
+                            <?= $cli["nombre"] ?> <?= $cli["apellido"] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select name="empleado_edit" class="form-control mb-2">
+                    <?php foreach($empleados as $e): ?>
+                        <option value="<?= $e['empleado_id'] ?>"
+                            <?= $e['empleado_id']==$c["empleado_id"]?"selected":"" ?>>
+                            <?= $e["nombre"] ?> <?= $e["apellido"] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select name="tratamiento_edit" class="form-control mb-2">
+                    <?php foreach($tratamientos as $t): ?>
+                        <option value="<?= $t['tratamiento_id'] ?>"
+                            <?= $t['tratamiento_id']==$c["tratamiento_id"]?"selected":"" ?>>
+                            <?= $t["nombre"] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <input name="fecha_edit" type="date" value="<?= $c['fecha_cita'] ?>" class="form-control mb-2">
+                <input name="hora_edit" type="time" value="<?= $c['hora_cita'] ?>" class="form-control mb-2">
+
+                <select name="estado_edit" class="form-control mb-3">
+                    <option <?= $c['estado']=='pendiente'?'selected':'' ?> value="pendiente">Pendiente</option>
+                    <option <?= $c['estado']=='confirmada'?'selected':'' ?> value="confirmada">Confirmada</option>
+                    <option <?= $c['estado']=='realizada'?'selected':'' ?> value="realizada">Realizada</option>
+                    <option <?= $c['estado']=='cancelada'?'selected':'' ?> value="cancelada">Cancelada</option>
+                </select>
+
+                <button name="edit" class="btn btn-success w-100">Guardar cambios</button>
+            </form>
         </div>
-
-        <!-- Listado -->
-        <div class="col-md-7">
-            <div class="card shadow-sm">
-                <div class="card-body">
-
-                    <table class="table table-sm table-striped">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Empleado</th>
-                                <th>Tratamiento</th>
-                                <th>Fecha</th>
-                                <th>Hora</th>
-                                <th>Sala</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach($citas as $c): ?>
-                            <tr>
-                                <td><?= $c['cli_nom']." ".$c['cli_ape'] ?></td>
-                                <td><?= $c['emp_nom']." ".$c['emp_ape'] ?></td>
-                                <td><?= $c['trat_nom'] ?></td>
-                                <td><?= $c['fecha_cita'] ?></td>
-                                <td><?= $c['hora_cita'] ?></td>
-                                <td><?= $c['sala_nom'] ?></td>
-                                <td><?= $c['estado'] ?></td>
-                            </tr>
-                        <?php endforeach ?>
-                        </tbody>
-                    </table>
-
-                </div>
-            </div>
-        </div>
-
+      </div>
     </div>
+
+    <?php endforeach; ?>
+</table>
+
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php include "footer.php"; ?>

@@ -1,5 +1,5 @@
 ---
-- name: Instalar y configurar MySQL Backend (Maestro y Réplica)
+- name: Configurar replicación MySQL Maestro → Réplica
   hosts: backend
   become: yes
 
@@ -8,80 +8,62 @@
 
   tasks:
 
-    - name: Actualizar repositorios
-      apt:
-        update_cache: yes
+############################################################
+# 1. Obtener estado del maestro SOLO en backend1 
+############################################################
+    - name: Obtener estado del maestro (SHOW MASTER STATUS)
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" -e "SHOW MASTER STATUS\G"
+      register: master_status_raw
+      when: inventory_hostname == "backend1"
 
-    - name: Instalar MySQL Server
-      apt:
-        name: mysql-server
-        state: present
+    - name: Extraer archivo de binlog (limpio)
+      set_fact:
+        binlog_file: "{{ (master_status_raw.stdout | regex_findall('File: (.*)'))[0] }}"
+      when: inventory_hostname == "backend1"
 
-    - name: Instalar dependencias para Ansible MySQL
-      apt:
-        name: python3-pymysql
-        state: present
+    - name: Extraer posición del binlog (limpio)
+      set_fact:
+        binlog_pos: "{{ (master_status_raw.stdout | regex_findall('Position: (.*)'))[0] | int }}"
+      when: inventory_hostname == "backend1"
 
-    - name: Instalar PHP CLI para generar hashes
-      apt:
-        name: php-cli
-        state: present
 
-    # ============================================================
-    # CONFIG ROOT AUTOMÁTICO
-    # ============================================================
 
-    - name: Configurar root con contraseña
-      mysql_user:
-        name: root
-        host: localhost
-        password: "{{ db.root_password }}"
-        login_unix_socket: /var/run/mysqld/mysqld.sock
-        check_implicit_admin: yes
-        priv: "*.*:ALL,GRANT"
-        state: present
+############################################################
+# 2. Crear host virtual que comparta variables al grupo
+############################################################
+    - name: Exportar binlog y posición a todos los hosts
+      add_host:
+        name: replication_info
+        binlog_file: "{{ binlog_file }}"
+        binlog_pos: "{{ binlog_pos }}"
+      when: inventory_hostname == "backend1"
 
-    - name: Crear archivo /root/.my.cnf
-      copy:
-        dest: /root/.my.cnf
-        content: |
-          [client]
-          user=root
-          password={{ db.root_password }}
-        owner: root
-        group: root
-        mode: '0600'
+############################################################
+# 3. CONFIGURACIÓN DEL ESCLAVO (backend2)
+############################################################
+    - name: Parar replicación si existía antes
+      shell: mysql -u root -p"{{ db.root_password }}" -e "STOP REPLICA;"
+      ignore_errors: true
+      when: inventory_hostname == "backend2"
 
-    # ============================================================
-    # CONFIGURAR BIND-ADDRESS PARA PERMITIR ACCESO EXTERNO
-    # ============================================================
+    - name: Resetear replicación
+      shell: mysql -u root -p"{{ db.root_password }}" -e "RESET REPLICA ALL;"
+      ignore_errors: true
+      when: inventory_hostname == "backend2"
 
-    - name: Configurar bind-address para permitir conexiones externas
-      replace:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^bind-address'
-        replace: "bind-address = 0.0.0.0"
+    - name: Aplicar CHANGE REPLICATION SOURCE TO
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" -e "
+          CHANGE REPLICATION SOURCE TO
+            SOURCE_HOST='{{ ip.backend1 }}',
+            SOURCE_USER='{{ db.replication_user }}',
+            SOURCE_PASSWORD='{{ db.replication_pass }}',
+            SOURCE_LOG_FILE='{{ hostvars['replication_info']['binlog_file'] }}',
+            SOURCE_LOG_POS={{ hostvars['replication_info']['binlog_pos'] }};
+        "
+      when: inventory_hostname == "backend2"
 
-    - name: Reiniciar MySQL
-      service:
-        name: mysql
-        state: restarted
-
-    # ============================================================
-    # CREAR USUARIO DE APLICACIÓN PARA LOS FRONTENDS
-    # ============================================================
-
-    - name: Crear usuario de aplicación en MySQL
-      mysql_user:
-        name: "{{ db.user }}"
-        password: "{{ db.password }}"
-        host: "{{ item }}"
-        priv: "{{ db.name }}.*:ALL"
-        state: present
-        login_user: root
-        login_password: "{{ db.root_password }}"
-      loop:
-        - "{{ ip.frontend1 }}"
-        - "{{ ip.frontend2 }}"
-        - "localhost"
-        - "%"
+    - name: Iniciar replicación en backend2
+      shell: mysql -u root -p"{{ db.root_password }}" -e "START REPLICA;"
+      when: inventory_hostname == "backend2"

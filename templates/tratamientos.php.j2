@@ -1,40 +1,134 @@
-<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+<?php
+require "auth.php";
+require "config.php";
+$pageTitle="Tratamientos";
+include "header.php";
+include "navbar.php";
 
-    <?php if ($_SESSION['rol'] === 'admin' || $_SESSION['rol'] === 'recepcionista'): ?>
-        <li class="nav-item">
-            <a class="nav-link" href="clientes.php">Clientes</a>
-        </li>
-    <?php endif; ?>
+# --- AÑADIR ---
+if (isset($_POST["add"])) {
+    $stmt = $pdo->prepare("
+        INSERT INTO Tratamientos(nombre, descripcion, precio, duracion_min, categoria_id)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $_POST["nombre"],
+        $_POST["descripcion"],
+        $_POST["precio"],
+        $_POST["duracion"],
+        $_POST["categoria"]
+    ]);
+}
 
-    <?php if ($_SESSION['rol'] === 'admin' || $_SESSION['rol'] === 'medico' || $_SESSION['rol'] === 'recepcionista'): ?>
-        <li class="nav-item">
-            <a class="nav-link" href="citas.php">Citas</a>
-        </li>
-    <?php endif; ?>
+# --- BORRAR ---
+if (isset($_POST["delete"])) {
+    $stmt = $pdo->prepare("DELETE FROM Tratamientos WHERE tratamiento_id = ?");
+    $stmt->execute([$_POST["id"]]);
+}
 
-    <?php if ($_SESSION['rol'] === 'admin'): ?>
-        <li class="nav-item">
-            <a class="nav-link" href="empleados.php">Empleados</a>
-        </li>
+# --- EDITAR ---
+if (isset($_POST["edit"])) {
+    $stmt = $pdo->prepare("
+        UPDATE Tratamientos SET nombre=?, descripcion=?, precio=?, duracion_min=?, categoria_id=?
+        WHERE tratamiento_id=?
+    ");
+    $stmt->execute([
+        $_POST["nombre_edit"],
+        $_POST["descripcion_edit"],
+        $_POST["precio_edit"],
+        $_POST["duracion_edit"],
+        $_POST["categoria_edit"],
+        $_POST["id"]
+    ]);
+}
 
-        <li class="nav-item">
-            <a class="nav-link" href="tratamientos.php">Tratamientos</a>
-        </li>
+$categorias = $pdo->query("SELECT * FROM CategoriasTratamientos ORDER BY categoria_id")->fetchAll();
+$tratamientos = $pdo->query("
+    SELECT t.*, c.nombre AS categoria
+    FROM Tratamientos t
+    LEFT JOIN CategoriasTratamientos c ON c.categoria_id = t.categoria_id
+    ORDER BY tratamiento_id DESC")->fetchAll();
+?>
 
-        <li class="nav-item">
-            <a class="nav-link" href="inventario.php">Inventario</a>
-        </li>
-    <?php endif; ?>
+<div class="container mt-4">
 
-</ul>
+<h2>Tratamientos</h2>
 
-<ul class="navbar-nav">
-    <li class="nav-item">
-        <span class="navbar-text me-3">
-            Hola, {{ '{{ $_SESSION["usuario"] }}' }}
-        </span>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-warning" href="logout.php">Salir</a>
-    </li>
-</ul>
+<form method="POST" class="card p-3 shadow mb-4">
+    <h5>Añadir Tratamiento</h5>
+
+    <input name="nombre" required placeholder="Nombre" class="form-control mb-2">
+    <textarea name="descripcion" placeholder="Descripción" class="form-control mb-2"></textarea>
+
+    <div class="row">
+        <div class="col-md-6"><input name="precio" type="number" step="0.01" placeholder="Precio" class="form-control mb-2"></div>
+        <div class="col-md-6"><input name="duracion" type="number" placeholder="Duración (min)" class="form-control mb-2"></div>
+    </div>
+
+    <select name="categoria" required class="form-control mb-3">
+        <?php foreach($categorias as $cat): ?>
+            <option value="<?= $cat['categoria_id'] ?>"><?= $cat['nombre'] ?></option>
+        <?php endforeach; ?>
+    </select>
+
+    <button name="add" class="btn btn-primary w-100">Guardar</button>
+</form>
+
+<table class="table table-bordered shadow bg-white">
+    <tr>
+        <th>ID</th><th>Nombre</th><th>Precio</th><th>Duración</th><th>Categoría</th><th>Acciones</th>
+    </tr>
+
+    <?php foreach($tratamientos as $t): ?>
+    <tr>
+        <td><?= $t["tratamiento_id"] ?></td>
+        <td><?= $t["nombre"] ?></td>
+        <td><?= $t["precio"] ?> €</td>
+        <td><?= $t["duracion_min"] ?> min</td>
+        <td><?= $t["categoria"] ?></td>
+
+        <td style="width:200px;">
+            <button class="btn btn-warning btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editModal<?= $t['tratamiento_id'] ?>">Editar</button>
+
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="id" value="<?= $t['tratamiento_id'] ?>">
+                <button name="delete" class="btn btn-danger btn-sm"
+                        onclick="return confirm('¿Eliminar tratamiento?')">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+
+    <!-- Modal edición -->
+    <div class="modal fade" id="editModal<?= $t['tratamiento_id'] ?>">
+      <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <form method="POST">
+                <input type="hidden" name="id" value="<?= $t['tratamiento_id'] ?>">
+                <input name="nombre_edit" value="<?= $t['nombre'] ?>" class="form-control mb-2">
+                <textarea name="descripcion_edit" class="form-control mb-2"><?= $t['descripcion'] ?></textarea>
+                <input name="precio_edit" type="number" value="<?= $t['precio'] ?>" class="form-control mb-2">
+                <input name="duracion_edit" type="number" value="<?= $t['duracion_min'] ?>" class="form-control mb-2">
+
+                <select name="categoria_edit" class="form-control mb-3">
+                    <?php foreach($categorias as $cat): ?>
+                    <option value="<?= $cat['categoria_id'] ?>"
+                        <?= $cat['categoria_id']==$t['categoria_id']?"selected":"" ?>>
+                        <?= $cat['nombre'] ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <button name="edit" class="btn btn-success w-100">Guardar cambios</button>
+            </form>
+        </div>
+      </div>
+    </div>
+
+    <?php endforeach; ?>
+</table>
+
+</div>
+
+<?php include "footer.php"; ?>

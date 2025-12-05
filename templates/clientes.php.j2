@@ -1,31 +1,57 @@
 <?php
-include "auth.php";
-requireRole(["admin", "recepcionista"]);
-$pageTitle = "Clientes";
+require "auth.php";
+require "config.php";
+$pageTitle="Clientes";
 include "header.php";
-include "config.php";
+include "navbar.php";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    if (isset($_POST["add"])) {
+        $stmt = $pdo->prepare("INSERT INTO Clientes(nombre, apellido, telefono, correo) VALUES (?,?,?,?)");
+        $stmt->execute([$_POST["nombre"], $_POST["apellido"], $_POST["telefono"], $_POST["correo"]]);
+    }
+
+    if (isset($_POST["delete"])) {
+        $stmt = $pdo->prepare("DELETE FROM Clientes WHERE cliente_id = ?");
+        $stmt->execute([$_POST["id"]]);
+    }
+}
 
 $clientes = $pdo->query("SELECT * FROM Clientes ORDER BY cliente_id DESC")->fetchAll();
 ?>
 
-<h2>Clientes</h2>
+<div class="container mt-4">
+    <h2>Clientes</h2>
 
-<table class="table table-striped">
-    <thead>
+    <form method="POST" class="card p-3 mb-4 shadow">
+        <h5>Añadir Cliente</h5>
+        <input class="form-control mb-2" name="nombre" placeholder="Nombre" required>
+        <input class="form-control mb-2" name="apellido" placeholder="Apellido" required>
+        <input class="form-control mb-2" name="telefono" placeholder="Teléfono">
+        <input class="form-control mb-2" name="correo" placeholder="Correo">
+        <button name="add" class="btn btn-primary mt-2">Guardar</button>
+    </form>
+
+    <table class="table table-bordered bg-white shadow">
         <tr>
-            <th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th>
+            <th>ID</th><th>Nombre</th><th>Apellido</th><th>Teléfono</th><th>Correo</th><th>Acción</th>
         </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($clientes as $c): ?>
-            <tr>
-                <td><?= $c["cliente_id"] ?></td>
-                <td><?= $c["nombre"] ?> <?= $c["apellido"] ?></td>
-                <td><?= $c["telefono"] ?></td>
-                <td><?= $c["correo"] ?></td>
-            </tr>
+        <?php foreach($clientes as $c): ?>
+        <tr>
+            <td><?= $c["cliente_id"] ?></td>
+            <td><?= $c["nombre"] ?></td>
+            <td><?= $c["apellido"] ?></td>
+            <td><?= $c["telefono"] ?></td>
+            <td><?= $c["correo"] ?></td>
+            <td>
+                <form method="POST">
+                    <input type="hidden" name="id" value="<?= $c['cliente_id'] ?>">
+                    <button name="delete" class="btn btn-danger btn-sm">Eliminar</button>
+                </form>
+            </td>
+        </tr>
         <?php endforeach; ?>
-    </tbody>
-</table>
+    </table>
+</div>
 
 <?php include "footer.php"; ?>
