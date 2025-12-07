@@ -1,21 +1,23 @@
 <?php
-if (isset($_POST['username']) && isset($_POST['password'])) {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+// includes/auth.php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-    $stmt = $pdo->prepare("SELECT password_hash FROM Usuarios WHERE nombre_usuario = ?");
-    $stmt->execute([$username]);
-    $stored_hash = $stmt->fetchColumn();
-
-    if (password_verify($password, $stored_hash)) {
-        $_SESSION["usuario"] = $username;
-        header("Location: dashboard.php");
+function require_login() {
+    if (empty($_SESSION['usuario_id'])) {
+        header('Location: login.php');
         exit;
-    } else {
-        echo "Usuario o contraseña incorrecta.";
     }
-} else {
-    echo "";
+}
+
+function require_role($roles = []) {
+    if (empty($roles)) return;
+    $rol = $_SESSION['rol'] ?? null;
+    if (!$rol || !in_array($rol, $roles)) {
+        http_response_code(403);
+        echo "<h1>403 - Acceso denegado</h1>";
+        exit;
+    }
 }
 ?>
-

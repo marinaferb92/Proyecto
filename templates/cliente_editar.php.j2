@@ -1,0 +1,114 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = $_GET['id'] ?? null;
+$cliente = [
+    'nombre' => '',
+    'apellido' => '',
+    'dni' => '',
+    'telefono' => '',
+    'email' => '',
+    'activo' => 1,
+];
+
+if ($id) {
+    $stmt = $pdo->prepare("SELECT * FROM Clientes WHERE cliente_id = ?");
+    $stmt->execute([$id]);
+    $cliente = $stmt->fetch();
+
+    if (!$cliente) {
+        die("Cliente no encontrado");
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    $data = [
+        $_POST['nombre'],
+        $_POST['apellido'],
+        $_POST['dni'],
+        $_POST['telefono'],
+        $_POST['email'],
+        isset($_POST['activo']) ? 1 : 0
+    ];
+
+    if ($id) {
+        // UPDATE
+        $data[] = $id;
+        $sql = "UPDATE Clientes 
+                SET nombre=?, apellido=?, dni=?, telefono=?, email=?, activo=? 
+                WHERE cliente_id=?";
+        $pdo->prepare($sql)->execute($data);
+    } else {
+        // INSERT
+        $sql = "INSERT INTO Clientes (nombre, apellido, dni, telefono, email, activo)
+                VALUES (?, ?, ?, ?, ?, ?)";
+        $pdo->prepare($sql)->execute($data);
+
+        $id = $pdo->lastInsertId();
+    }
+
+    header("Location: cliente_detalle.php?id=" . $id);
+    exit;
+}
+
+$pageTitle = $id ? "Editar Cliente" : "Nuevo Cliente";
+include 'header.php';
+?>
+
+<h3 class="mb-4">
+    <i class="bi bi-person-plus me-2"></i>
+    <?= $id ? "Editar Cliente" : "Nuevo Cliente" ?>
+</h3>
+
+<form method="POST" class="card card-body shadow-sm">
+
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <label class="form-label">Nombre</label>
+      <input name="nombre" class="form-control" required
+             value="<?= htmlspecialchars($cliente['nombre']) ?>">
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Apellido</label>
+      <input name="apellido" class="form-control" required
+             value="<?= htmlspecialchars($cliente['apellido']) ?>">
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label class="form-label">DNI</label>
+      <input name="dni" class="form-control"
+             value="<?= htmlspecialchars($cliente['dni']) ?>">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Teléfono</label>
+      <input name="telefono" class="form-control"
+             value="<?= htmlspecialchars($cliente['telefono']) ?>">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Email</label>
+      <input name="email" type="email" class="form-control"
+             value="<?= htmlspecialchars($cliente['email']) ?>">
+    </div>
+  </div>
+
+  <label class="form-check mb-3">
+    <input type="checkbox" name="activo" class="form-check-input"
+           <?= $cliente['activo'] ? "checked" : "" ?>>
+    <span class="form-check-label">Activo</span>
+  </label>
+
+  <div class="text-end">
+    <a href="clientes.php" class="btn btn-outline-secondary">Cancelar</a>
+    <button class="btn btn-primary">Guardar</button>
+  </div>
+</form>
+
+<?php include 'footer.php'; ?>

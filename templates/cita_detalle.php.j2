@@ -1,0 +1,88 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = $_GET['id'] ?? null;
+if (!$id) die("ID inválido");
+
+$stmt = $pdo->prepare("
+    SELECT c.*, 
+           cli.nombre AS c_nombre, cli.apellido AS c_apellido,
+           emp.nombre AS e_nombre, emp.apellido AS e_apellido,
+           t.nombre AS t_nombre
+    FROM Citas c
+    LEFT JOIN Clientes cli ON cli.cliente_id = c.cliente_id
+    LEFT JOIN Empleados emp ON emp.empleado_id = c.empleado_id
+    LEFT JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
+    WHERE c.cita_id = ?
+");
+$stmt->execute([$id]);
+$cita = $stmt->fetch();
+
+if (!$cita) die("Cita no encontrada");
+
+$pageTitle = "Cita del " . $cita['fecha'];
+include 'header.php';
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-calendar2-week me-2"></i>Detalles de la Cita</h3>
+
+    <div>
+        <a href="cita_editar.php?id=<?= $id ?>" class="btn btn-outline-primary me-2">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+
+        <?php if ($_SESSION['rol'] === 'admin'): ?>
+        <a href="cita_borrar.php?id=<?= $id ?>" 
+           onclick="return confirm('¿Seguro que quieres eliminar esta cita?')"
+           class="btn btn-outline-danger">
+           <i class="bi bi-trash"></i> Borrar
+        </a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <strong>Cliente:</strong><br>
+            <?= htmlspecialchars($cita['c_nombre'] . " " . $cita['c_apellido']) ?>
+        </div>
+        <div class="col-md-4">
+            <strong>Empleado:</strong><br>
+            <?= htmlspecialchars($cita['e_nombre'] . " " . $cita['e_apellido']) ?>
+        </div>
+        <div class="col-md-4">
+            <strong>Tratamiento:</strong><br>
+            <?= htmlspecialchars($cita['t_nombre']) ?>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <strong>Fecha:</strong><br>
+            <?= htmlspecialchars($cita['fecha']) ?>
+        </div>
+        <div class="col-md-4">
+            <strong>Hora:</strong><br>
+            <?= htmlspecialchars($cita['hora']) ?>
+        </div>
+        <div class="col-md-4">
+            <strong>Estado:</strong><br>
+            <span class="badge bg-info"><?= htmlspecialchars($cita['estado']) ?></span>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <strong>Notas:</strong><br>
+        <?= nl2br(htmlspecialchars($cita['notas'])) ?>
+    </div>
+
+  </div>
+</

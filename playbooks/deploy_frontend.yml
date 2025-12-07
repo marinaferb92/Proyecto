@@ -1,4 +1,3 @@
----
 - name: Desplegar aplicación completa en Frontends
   hosts: frontend
   become: yes
@@ -12,36 +11,24 @@
       shell: |
         find {{ directories.www }} -maxdepth 1 -type f -name "*.php" -delete
 
-    - name: Copiar todos los PHP desde templates
+    - name: Copiar todos los templates PHP automáticamente
       template:
-        src: "../templates/{{ item }}"
-        dest: "{{ directories.www }}/{{ item | regex_replace('.j2','') }}"
+        src: "{{ item }}"
+        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2','') }}"
         owner: www-data
         group: www-data
         mode: '0644'
-      loop:
-        - index.php.j2
-        - auth.php.j2
-        - header.php.j2
-        - footer.php.j2
-        - navbar.php.j2
-        - dashboard.php.j2
-        - clientes.php.j2
-        - empleados.php.j2
-        - tratamientos.php.j2
-        - inventario.php.j2
-        - citas.php.j2
-        - logout.php.j2
-        - session_handler.php.j2
-        - config.php.j2        
-        
-    - name: Copiar archivos estáticos
+      with_fileglob:
+        - "../templates/*.php.j2"
+      when: "'php.ini.j2' not in item and 'htaccess.j2' not in item"
+
+    - name: Copiar archivos estáticos CSS/JS
       template:
-        src: "../templates/{{ item }}"
-        dest: "{{ directories.app_dir }}/assets/{{ item | regex_replace('.j2','') }}"
-      loop:
-        - custom.css.j2
-        - custom.js.j2
+        src: "{{ item }}"
+        dest: "{{ directories.app_dir }}/assets/{{ item | basename | regex_replace('.j2','') }}"
+      with_fileglob:
+        - "../templates/*.css.j2"
+        - "../templates/*.js.j2"
       ignore_errors: yes
 
     - name: Copiar .htaccess
@@ -51,9 +38,9 @@
         owner: www-data
         group: www-data
         mode: '0644'
-      ignore_errors: yes
 
     - name: Reiniciar Apache
       service:
         name: apache2
         state: restarted
+

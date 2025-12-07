@@ -1,0 +1,30 @@
+<?php
+// proveedor_borrar.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($id <= 0) {
+    header("Location: proveedores.php");
+    exit;
+}
+
+// comprobar si está en uso
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Inventario WHERE proveedor_id = :id");
+$stmt->execute([':id' => $id]);
+$usado = $stmt->fetchColumn();
+
+if ($usado > 0) {
+    header("Location: proveedores.php?error=" . urlencode("No se puede eliminar: proveedor en uso."));
+    exit;
+}
+
+$stmt = $pdo->prepare("DELETE FROM Proveedores WHERE proveedor_id = :id");
+$stmt->execute([':id' => $id]);
+
+header("Location: proveedores.php?msg=" . urlencode("Proveedor eliminado."));
+exit;

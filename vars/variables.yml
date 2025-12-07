@@ -30,3 +30,7 @@ certbot:
 
 apache:
   service_name: apache2
+
+loadbalancer:
+  upstream_name: "lamp_cluster"
+  backend_port: "80"

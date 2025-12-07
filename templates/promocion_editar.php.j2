@@ -1,0 +1,108 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$esEdicion = $id > 0;
+
+$pageTitle = $esEdicion ? "Editar promoción" : "Nueva promoción";
+include 'header.php';
+
+$promo = [
+    'nombre' => '',
+    'tipo' => 'porcentaje',
+    'valor' => 0,
+    'fecha_inicio' => date("Y-m-d"),
+    'fecha_fin' => date("Y-m-d")
+];
+
+if ($esEdicion) {
+    $stmt = $pdo->prepare("SELECT * FROM DescuentosPromociones WHERE promo_id=:id");
+    $stmt->execute(['id'=>$id]);
+    $promo = $stmt->fetch();
+}
+
+$errores = [];
+$ok = '';
+
+if ($_SERVER['REQUEST_METHOD']==='POST') {
+
+    $promo['nombre'] = trim($_POST['nombre']);
+    $promo['tipo'] = $_POST['tipo'];
+    $promo['valor'] = (float)$_POST['valor'];
+    $promo['fecha_inicio'] = $_POST['fecha_inicio'];
+    $promo['fecha_fin'] = $_POST['fecha_fin'];
+
+    if ($promo['nombre']==='') $errores[]="El nombre es obligatorio";
+    if ($promo['valor']<=0) $errores[]="El valor debe ser mayor que cero";
+
+    if (!$errores) {
+        if ($esEdicion) {
+            $sql = "UPDATE DescuentosPromociones
+                    SET nombre=:n, tipo=:t, valor=:v, fecha_inicio=:fi, fecha_fin=:ff
+                    WHERE promo_id=:id";
+            $pdo->prepare($sql)->execute([
+                ':n'=>$promo['nombre'], ':t'=>$promo['tipo'], ':v'=>$promo['valor'],
+                ':fi'=>$promo['fecha_inicio'], ':ff'=>$promo['fecha_fin'], ':id'=>$id
+            ]);
+            $ok="Promoción actualizada correctamente";
+        } else {
+            $sql = "INSERT INTO DescuentosPromociones (nombre,tipo,valor,fecha_inicio,fecha_fin)
+                    VALUES (:n,:t,:v,:fi,:ff)";
+            $pdo->prepare($sql)->execute([
+                ':n'=>$promo['nombre'], ':t'=>$promo['tipo'], ':v'=>$promo['valor'],
+                ':fi'=>$promo['fecha_inicio'], ':ff'=>$promo['fecha_fin']
+            ]);
+            header("Location: promociones.php?msg=creada");
+            exit;
+        }
+    }
+}
+?>
+
+<h3><?= $pageTitle ?></h3>
+
+<?php if($errores): ?>
+<div class="alert alert-danger"><?php foreach($errores as $e) echo "<div>$e</div>"; ?></div>
+<?php endif; ?>
+
+<?php if($ok): ?>
+<div class="alert alert-success"><?=$ok?></div>
+<?php endif; ?>
+
+<form class="card card-body shadow-sm" method="post">
+
+    <label class="form-label">Nombre *</label>
+    <input name="nombre" class="form-control" value="<?=$promo['nombre']?>" required>
+
+    <label class="form-label mt-3">Tipo *</label>
+    <select name="tipo" class="form-select">
+        <option value="porcentaje" <?=$promo['tipo']=='porcentaje'?'selected':''?>>Porcentaje (%)</option>
+        <option value="cantidad_fija" <?=$promo['tipo']=='cantidad_fija'?'selected':''?>>Cantidad fija (€)</option>
+    </select>
+
+    <label class="form-label mt-3">Valor *</label>
+    <input type="number" name="valor" step="0.01"
+           value="<?=$promo['valor']?>" class="form-control">
+
+    <div class="row mt-3">
+        <div class="col">
+            <label class="form-label">Fecha inicio</label>
+            <input type="date" name="fecha_inicio" value="<?=$promo['fecha_inicio']?>" class="form-control">
+        </div>
+        <div class="col">
+            <label class="form-label">Fecha fin</label>
+            <input type="date" name="fecha_fin" value="<?=$promo['fecha_fin']?>" class="form-control">
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <button class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+    </div>
+
+</form>
+
+<?php include 'footer.php'; ?>

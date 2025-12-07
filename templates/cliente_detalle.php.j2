@@ -1,0 +1,140 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = $_GET['id'] ?? null;
+if (!$id) {
+    die("ID inválido");
+}
+
+// Obtener datos del cliente
+$stmt = $pdo->prepare("SELECT * FROM Clientes WHERE cliente_id = ?");
+$stmt->execute([$id]);
+$cliente = $stmt->fetch();
+
+if (!$cliente) {
+    die("Cliente no encontrado");
+}
+
+// Obtener citas del cliente
+$stmtCitas = $pdo->prepare("
+    SELECT c.*, t.nombre AS tratamiento
+    FROM Citas c
+    LEFT JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
+    WHERE c.cliente_id = ?
+    ORDER BY c.fecha DESC, c.hora DESC
+");
+$stmtCitas->execute([$id]);
+$citas = $stmtCitas->fetchAll();
+
+$pageTitle = "Cliente: " . htmlspecialchars($cliente['nombre'].' '.$cliente['apellido']);
+include 'header.php';
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-person-bounding-box me-2"></i>Ficha del Cliente</h3>
+
+    <div>
+        <a href="cliente_editar.php?id=<?= $cliente['cliente_id'] ?>" class="btn btn-outline-primary me-2">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+
+        <?php if ($_SESSION['rol'] === 'admin'): ?>
+        <a href="cliente_borrar.php?id=<?= $cliente['cliente_id'] ?>" 
+           onclick="return confirm('¿Estás seguro de borrar este cliente?')"
+           class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Borrar
+        </a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- DATOS DEL CLIENTE -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Información personal</h5>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <strong>Nombre:</strong><br>
+            <?= htmlspecialchars($cliente['nombre']) ?>
+        </div>
+        <div class="col-md-6 mb-3">
+            <strong>Apellido:</strong><br>
+            <?= htmlspecialchars($cliente['apellido']) ?>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <strong>DNI:</strong><br>
+            <?= htmlspecialchars($cliente['dni']) ?>
+        </div>
+        <div class="col-md-4 mb-3">
+            <strong>Teléfono:</strong><br>
+            <?= htmlspecialchars($cliente['telefono']) ?>
+        </div>
+        <div class="col-md-4 mb-3">
+            <strong>Email:</strong><br>
+            <?= htmlspecialchars($cliente['email']) ?>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <strong>Estado:</strong><br>
+            <?php if ($cliente['activo']): ?>
+                <span class="badge bg-success">Activo</span>
+            <?php else: ?>
+                <span class="badge bg-secondary">Inactivo</span>
+            <?php endif; ?>
+        </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- HISTORIAL DE CITAS -->
+<div class="card shadow-sm mb-5">
+    <div class="card-body">
+
+        <h5 class="mb-3"><i class="bi bi-calendar2-check me-2"></i>Historial de citas</h5>
+
+        <?php if ($citas): ?>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Tratamiento</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($citas as $c): ?>
+                <tr>
+                    <td><?= htmlspecialchars($c['fecha']) ?></td>
+                    <td><?= htmlspecialchars($c['hora']) ?></td>
+                    <td><?= htmlspecialchars($c['tratamiento']) ?></td>
+                    <td><?= htmlspecialchars($c['estado']) ?></td>
+                    <td class="text-end">
+                        <a href="cita_detalle.php?id=<?= $c['cita_id'] ?>" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php else: ?>
+            <p class="text-muted text-center mt-3">Este cliente todavía no tiene citas registradas.</p>
+        <?php endif; ?>
+
+    </div>
+</div>
+
+<?php include 'footer.php'; ?>

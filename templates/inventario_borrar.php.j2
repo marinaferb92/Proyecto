@@ -1,0 +1,35 @@
+<?php
+// inventario_borrar.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = (int)($_GET['id'] ?? 0);
+
+if ($id <= 0) {
+    header("Location: inventario.php");
+    exit;
+}
+
+// comprobar si el item tiene movimientos
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM MovimientosInventario WHERE item_id = :id");
+$stmt->execute([':id' => $id]);
+$movs = $stmt->fetchColumn();
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM ConsumoMaterial WHERE item_id = :id");
+$stmt->execute([':id' => $id]);
+$consumo = $stmt->fetchColumn();
+
+if ($movs > 0 || $consumo > 0) {
+    header("Location: inventario.php?error=" .
+        urlencode("No se puede eliminar: tiene movimientos o consumos registrados."));
+    exit;
+}
+
+$stmt = $pdo->prepare("DELETE FROM Inventario WHERE item_id = :id");
+$stmt->execute([':id' => $id]);
+
+header("Location: inventario.php?msg=" . urlencode("Producto eliminado."));
+exit;

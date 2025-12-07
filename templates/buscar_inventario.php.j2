@@ -1,0 +1,25 @@
+<?php
+require_once 'config.php';
+
+$q = trim($_GET['q'] ?? '');
+
+$sql = "SELECT item_id, nombre, tipo, stock_actual, unidad, costo_unitario
+        FROM Inventario";
+
+$params = [];
+
+if ($q !== '') {
+    $sql .= " WHERE nombre LIKE :q
+              OR tipo LIKE :q";
+    $params[':q'] = "%$q%";
+}
+
+$sql .= " ORDER BY stock_actual ASC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+
+$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+header('Content-Type: application/json');
+echo json_encode($items);

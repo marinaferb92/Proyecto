@@ -1,24 +1,18 @@
--- ============================================================
--- ESTRUCTURA COMPLETA DE LA BASE DE DATOS - CLÍNICA ESTÉTICA
--- ============================================================
-
 DROP DATABASE IF EXISTS clinica_db;
 CREATE DATABASE clinica_db;
 USE clinica_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
--- DROP VISTAS
+-- Drops (igual que tenías)
 DROP VIEW IF EXISTS vw_ingresos_mensuales;
 DROP VIEW IF EXISTS vw_tratamientos_mas_demandados;
 DROP VIEW IF EXISTS vw_stock_critico;
 DROP VIEW IF EXISTS vw_productividad_empleados;
 
--- DROP EVENTOS
 DROP EVENT IF EXISTS ev_calculo_diario_estadisticas;
 DROP EVENT IF EXISTS ev_limpiar_logs;
 
--- DROP TRIGGERS
 DROP TRIGGER IF EXISTS trg_crear_ficha_medica;
 DROP TRIGGER IF EXISTS trg_actualizar_estado_cita;
 DROP TRIGGER IF EXISTS trg_insertar_tratamiento_prev;
@@ -26,15 +20,10 @@ DROP TRIGGER IF EXISTS trg_descontar_stock;
 DROP TRIGGER IF EXISTS trg_movimiento_inventario;
 DROP TRIGGER IF EXISTS trg_log_actividad_cita;
 
--- DROP PROCEDURES
 DROP PROCEDURE IF EXISTS sp_calcular_estadisticas_dia;
 DROP PROCEDURE IF EXISTS sp_generar_datos_demo_grande;
 
--- DROP FUNCTIONS
 DROP FUNCTION IF EXISTS fn_calcular_edad;
-
--- DROP TABLAS (con FK off)
-SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS CitaPromocion;
 DROP TABLE IF EXISTS DescuentosPromociones;
@@ -61,12 +50,7 @@ DROP TABLE IF EXISTS EstadisticasDiarias;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- =============================================
--- TABLAS
--- =============================================
--- ---------------------------------------------
 -- CLIENTES
--- ---------------------------------------------
 CREATE TABLE Clientes (
     cliente_id INT AUTO_INCREMENT PRIMARY KEY,
     dni VARCHAR(15) UNIQUE,
@@ -82,18 +66,14 @@ CREATE TABLE Clientes (
     origen_cliente ENUM('Google','Instagram','Recomendacion','Web','Publicidad','Otro') DEFAULT 'Recomendacion'
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- CATEGORÍAS EMPLEADOS
--- ---------------------------------------------
 CREATE TABLE CategoriasEmpleados (
     categoria_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     descripcion TEXT
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- EMPLEADOS
--- ---------------------------------------------
 CREATE TABLE Empleados (
     empleado_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -104,11 +84,10 @@ CREATE TABLE Empleados (
     categoria_id INT,
     activo BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (categoria_id) REFERENCES CategoriasEmpleados(categoria_id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- ESPECIALIDADES
--- ---------------------------------------------
 CREATE TABLE Especialidades (
     especialidad_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -119,13 +98,13 @@ CREATE TABLE EmpleadoEspecialidad (
     empleado_id INT,
     especialidad_id INT,
     PRIMARY KEY (empleado_id, especialidad_id),
-    FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id),
+    FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (especialidad_id) REFERENCES Especialidades(especialidad_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- FICHAS MÉDICAS
--- ---------------------------------------------
 CREATE TABLE FichasMedicas (
     ficha_id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
@@ -134,11 +113,10 @@ CREATE TABLE FichasMedicas (
     observaciones TEXT,
     fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- SALAS
--- ---------------------------------------------
 CREATE TABLE Salas (
     sala_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -146,18 +124,14 @@ CREATE TABLE Salas (
     capacidad INT DEFAULT 1
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- CATEGORÍAS TRATAMIENTOS
--- ---------------------------------------------
 CREATE TABLE CategoriasTratamientos (
     categoria_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- TRATAMIENTOS
--- ---------------------------------------------
 CREATE TABLE Tratamientos (
     tratamiento_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -167,24 +141,23 @@ CREATE TABLE Tratamientos (
     categoria_id INT,
     requiere_sala BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (categoria_id) REFERENCES CategoriasTratamientos(categoria_id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- TRATAMIENTOS PREVIOS
--- ---------------------------------------------
 CREATE TABLE TratamientosPrevios (
     cliente_id INT,
     tratamiento_id INT,
     fecha_tratamiento DATE,
     notas TEXT,
     PRIMARY KEY (cliente_id, tratamiento_id, fecha_tratamiento),
-    FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id),
+    FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (tratamiento_id) REFERENCES Tratamientos(tratamiento_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- CITAS
--- ---------------------------------------------
 CREATE TABLE Citas (
     cita_id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
@@ -196,15 +169,17 @@ CREATE TABLE Citas (
     estado ENUM('pendiente','confirmada','realizada','cancelada','reprogramada')
         DEFAULT 'pendiente',
     observaciones TEXT,
-    FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id),
-    FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id),
-    FOREIGN KEY (tratamiento_id) REFERENCES Tratamientos(tratamiento_id),
+    FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (tratamiento_id) REFERENCES Tratamientos(tratamiento_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (sala_id) REFERENCES Salas(sala_id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- PAGOS
--- ---------------------------------------------
 CREATE TABLE Pagos (
     pago_id INT AUTO_INCREMENT PRIMARY KEY,
     cita_id INT NOT NULL,
@@ -212,11 +187,10 @@ CREATE TABLE Pagos (
     monto DECIMAL(10,2) NOT NULL,
     fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cita_id) REFERENCES Citas(cita_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- VALORACIONES
--- ---------------------------------------------
 CREATE TABLE Valoraciones (
     valoracion_id INT AUTO_INCREMENT PRIMARY KEY,
     cita_id INT NOT NULL,
@@ -224,11 +198,10 @@ CREATE TABLE Valoraciones (
     comentario TEXT,
     fecha_valoracion DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cita_id) REFERENCES Citas(cita_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- PROVEEDORES
--- ---------------------------------------------
 CREATE TABLE Proveedores (
     proveedor_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -237,9 +210,7 @@ CREATE TABLE Proveedores (
     direccion TEXT
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- INVENTARIO
--- ---------------------------------------------
 CREATE TABLE Inventario (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -249,23 +220,22 @@ CREATE TABLE Inventario (
     costo_unitario DECIMAL(10,2),
     proveedor_id INT,
     FOREIGN KEY (proveedor_id) REFERENCES Proveedores(proveedor_id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- CONSUMO MATERIAL
--- ---------------------------------------------
 CREATE TABLE ConsumoMaterial (
     cita_id INT,
     item_id INT,
     cantidad_usada INT NOT NULL,
     PRIMARY KEY (cita_id, item_id),
-    FOREIGN KEY (cita_id) REFERENCES Citas(cita_id),
+    FOREIGN KEY (cita_id) REFERENCES Citas(cita_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES Inventario(item_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- MOVIMIENTOS INVENTARIO
--- ---------------------------------------------
 CREATE TABLE MovimientosInventario (
     movimiento_id INT AUTO_INCREMENT PRIMARY KEY,
     item_id INT NOT NULL,
@@ -274,11 +244,10 @@ CREATE TABLE MovimientosInventario (
     fecha_movimiento DATETIME DEFAULT CURRENT_TIMESTAMP,
     descripcion TEXT,
     FOREIGN KEY (item_id) REFERENCES Inventario(item_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- CAMPAÑAS MARKETING
--- ---------------------------------------------
 CREATE TABLE CampañasMarketing (
     campaña_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -288,9 +257,7 @@ CREATE TABLE CampañasMarketing (
     presupuesto DECIMAL(10,2)
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- PROMOCIONES
--- ---------------------------------------------
 CREATE TABLE DescuentosPromociones (
     promo_id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -304,24 +271,23 @@ CREATE TABLE CitaPromocion (
     cita_id INT,
     promo_id INT,
     PRIMARY KEY (cita_id, promo_id),
-    FOREIGN KEY (cita_id) REFERENCES Citas(cita_id),
+    FOREIGN KEY (cita_id) REFERENCES Citas(cita_id)
+        ON DELETE CASCADE,
     FOREIGN KEY (promo_id) REFERENCES DescuentosPromociones(promo_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- LOGS
--- ---------------------------------------------
 CREATE TABLE LogsActividad (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     empleado_id INT,
     accion VARCHAR(255),
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------
 -- ESTADÍSTICAS DIARIAS
--- ---------------------------------------------
 CREATE TABLE EstadisticasDiarias (
     fecha DATE PRIMARY KEY,
     citas_totales INT,
@@ -333,10 +299,7 @@ CREATE TABLE EstadisticasDiarias (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- =============================================
--- TABLA USUARIOS (para login en la app LAMP)
--- =============================================
-
+-- USUARIOS
 CREATE TABLE Usuarios (
     usuario_id INT AUTO_INCREMENT PRIMARY KEY,
     empleado_id INT NULL,
@@ -345,6 +308,7 @@ CREATE TABLE Usuarios (
     rol ENUM('admin','recepcionista','medico') NOT NULL DEFAULT 'recepcionista',
     activo TINYINT(1) DEFAULT 1,
     FOREIGN KEY (empleado_id) REFERENCES Empleados(empleado_id)
+        ON DELETE SET NULL
 );
 
 

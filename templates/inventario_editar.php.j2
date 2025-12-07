@@ -1,0 +1,169 @@
+<?php
+// inventario_editar.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$esEdicion = $id > 0;
+
+$pageTitle = $esEdicion ? "Editar producto" : "Nuevo producto";
+include 'header.php';
+
+$item = [
+    'nombre' => '',
+    'tipo' => 'insumo',
+    'stock_actual' => 0,
+    'unidad' => '',
+    'costo_unitario' => 0,
+    'proveedor_id' => null
+];
+
+if ($esEdicion) {
+    $stmt = $pdo->prepare("
+        SELECT * FROM Inventario WHERE item_id = :id
+    ");
+    $stmt->execute([':id' => $id]);
+    $item = $stmt->fetch();
+    if (!$item) {
+        echo "<div class='alert alert-danger'>Producto no encontrado.</div>";
+        include 'footer.php';
+        exit;
+    }
+}
+
+$proveedores = $pdo->query("SELECT proveedor_id, nombre FROM Proveedores")->fetchAll();
+
+$errores = [];
+$ok = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $item['nombre'] = trim($_POST['nombre']);
+    $item['tipo'] = $_POST['tipo'];
+    $item['stock_actual'] = (int)$_POST['stock_actual'];
+    $item['unidad'] = trim($_POST['unidad']);
+    $item['costo_unitario'] = (float)$_POST['costo_unitario'];
+    $item['proveedor_id'] = ($_POST['proveedor_id'] !== '') ? (int)$_POST['proveedor_id'] : null;
+
+    if ($item['nombre'] === '') $errores[] = "El nombre es obligatorio.";
+
+    if (!$errores) {
+        if ($esEdicion) {
+            $sql = "UPDATE Inventario
+                    SET nombre = :nom, tipo = :tipo, stock_actual = :stock,
+                        unidad = :uni, costo_unitario = :costo,
+                        proveedor_id = :prove
+                    WHERE item_id = :id";
+            $pdo->prepare($sql)->execute([
+                ':nom' => $item['nombre'],
+                ':tipo' => $item['tipo'],
+                ':stock' => $item['stock_actual'],
+                ':uni' => $item['unidad'],
+                ':costo' => $item['costo_unitario'],
+                ':prove' => $item['proveedor_id'],
+                ':id' => $id
+            ]);
+            $ok = "Producto actualizado correctamente.";
+        } else {
+            $sql = "INSERT INTO Inventario
+                    (nombre, tipo, stock_actual, unidad, costo_unitario, proveedor_id)
+                    VALUES (:nom, :tipo, :stock, :uni, :costo, :prove)";
+            $pdo->prepare($sql)->execute([
+                ':nom' => $item['nombre'],
+                ':tipo' => $item['tipo'],
+                ':stock' => $item['stock_actual'],
+                ':uni' => $item['unidad'],
+                ':costo' => $item['costo_unitario'],
+                ':prove' => $item['proveedor_id']
+            ]);
+            header("Location: inventario.php?msg=" . urlencode("Producto creado."));
+            exit;
+        }
+    }
+}
+?>
+
+<div class="d-flex justify-content-between mb-3">
+    <h3><?= $pageTitle ?></h3>
+    <a href="inventario.php" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<?php if ($errores): ?>
+<div class="alert alert-danger">
+    <?php foreach ($errores as $e): ?>
+        <div><?= htmlspecialchars($e) ?></div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($ok): ?>
+<div class="alert alert-success"><?= htmlspecialchars($ok) ?></div>
+<?php endif; ?>
+
+<form method="post" class="card shadow-sm p-3">
+    <div class="mb-3">
+        <label class="form-label">Nombre *</label>
+        <input type="text" name="nombre" class="form-control"
+               value="<?= htmlspecialchars($item['nombre']) ?>" required>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-select">
+                <?php foreach (['insumo','producto','equipamiento'] as $t): ?>
+                    <option value="<?= $t ?>" <?= $t === $item['tipo'] ? 'selected' : '' ?>>
+                        <?= ucfirst($t) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Stock actual</label>
+            <input type="number" name="stock_actual" class="form-control"
+                   value="<?= $item['stock_actual'] ?>">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Unidad (ml, unidades...)</label>
+            <input type="text" name="unidad" class="form-control"
+                   value="<?= htmlspecialchars($item['unidad']) ?>">
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <label class="form-label">Coste unitario (€)</label>
+            <input type="number" step="0.01" name="costo_unitario" class="form-control"
+                   value="<?= $item['costo_unitario'] ?>">
+        </div>
+
+        <div class="col-md-8">
+            <label class="form-label">Proveedor</label>
+            <select name="proveedor_id" class="form-select">
+                <option value="">Sin proveedor</option>
+                <?php foreach ($proveedores as $p): ?>
+                    <option
+                        value="<?= $p['proveedor_id'] ?>"
+                        <?= (int)$item['proveedor_id'] === (int)$p['proveedor_id'] ? 'selected' : '' ?>
+                    >
+                        <?= htmlspecialchars($p['nombre']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <button class="btn btn-primary">
+            <i class="bi bi-save"></i> Guardar
+        </button>
+    </div>
+</form>
+
+<?php include 'footer.php'; ?>

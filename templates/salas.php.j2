@@ -1,0 +1,55 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$pageTitle = "Salas";
+include 'header.php';
+
+$salas = $pdo->query("SELECT * FROM Salas ORDER BY nombre")->fetchAll();
+?>
+
+<div class="d-flex justify-content-between mb-3">
+    <h3><i class="bi bi-door-open"></i> Salas</h3>
+    <a href="sala_editar.php" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nueva sala
+    </a>
+</div>
+
+<div class="card shadow-sm">
+<table class="table table-hover">
+<thead class="table-light">
+<tr>
+    <th>Nombre</th>
+    <th>Tipo</th>
+    <th>Capacidad</th>
+    <th class="text-end">Acciones</th>
+</tr>
+</thead>
+<tbody>
+
+<?php foreach($salas as $s): ?>
+<tr>
+    <td><?=$s['nombre']?></td>
+    <td><?=$s['tipo']?></td>
+    <td><?=$s['capacidad']?></td>
+    <td class="text-end">
+        <a href="sala_editar.php?id=<?=$s['sala_id']?>" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i>
+        </a>
+        <a href="sala_borrar.php?id=<?=$s['sala_id']?>"
+           onclick="return confirm('¿Eliminar sala?')"
+           class="btn btn-sm btn-outline-danger">
+           <i class="bi bi-trash"></i>
+        </a>
+    </td>
+</tr>
+<?php endforeach; ?>
+
+</tbody>
+</table>
+</div>
+
+<?php include 'footer.php'; ?>

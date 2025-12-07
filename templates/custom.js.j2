@@ -1,1 +1,123 @@
-console.log("App clínica cargada correctamente");
+document.addEventListener("DOMContentLoaded", function () {
+
+    // =====================================================
+    // AUTOCOMPLETADO CLIENTES
+    // =====================================================
+
+    const cliInput = document.getElementById("buscador-clientes");
+    const cliBox = document.getElementById("cliente-resultados");
+
+    if (cliInput) {
+        let timeoutCli = null;
+
+        function renderClientes(data) {
+            if (data.length === 0) {
+                cliBox.innerHTML = "<div class='autocomplete-item text-muted'>Sin resultados</div>";
+                cliBox.style.display = "block";
+                return;
+            }
+
+            cliBox.innerHTML = data
+                .map(c => `
+                    <div class="autocomplete-item" data-id="${c.cliente_id}">
+                        <strong>${c.nombre} ${c.apellido}</strong><br>
+                        <span class="text-muted small">${c.dni} · ${c.telefono}</span>
+                    </div>
+                `)
+                .join("");
+
+            cliBox.style.display = "block";
+        }
+
+        cliBox.addEventListener("click", function (e) {
+            const item = e.target.closest(".autocomplete-item");
+            if (!item) return;
+
+            window.location.href = "cliente_detalle.php?id=" + item.dataset.id;
+        });
+
+        cliInput.addEventListener("input", function () {
+            const q = cliInput.value.trim();
+            clearTimeout(timeoutCli);
+
+            if (q.length < 2) {
+                cliBox.style.display = "none";
+                return;
+            }
+
+            timeoutCli = setTimeout(() => {
+                fetch("buscar_clientes.php?q=" + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => renderClientes(data));
+            }, 200);
+        });
+    }
+
+    // =====================================================
+    // LIVE SEARCH INVENTARIO
+    // =====================================================
+
+    const invInput = document.getElementById("inventario-search");
+    const invBox = document.getElementById("inventario-resultados");
+
+    if (invInput) {
+        let timeoutInv = null;
+
+        function renderInventario(data) {
+            if (data.length === 0) {
+                invBox.innerHTML = "<div class='autocomplete-item text-muted'>Sin resultados</div>";
+                invBox.style.display = "block";
+                return;
+            }
+
+            invBox.innerHTML = data.map(item => `
+                <div class="autocomplete-item" data-id="${item.item_id}">
+                    <strong>${item.nombre}</strong><br>
+                    <span class="text-muted small">${item.tipo}</span><br>
+                    ${item.stock_actual < 10 
+                        ? `<span class="badge bg-danger">Stock bajo (${item.stock_actual})</span>`
+                        : `<span class="badge bg-success">${item.stock_actual} en stock</span>`}
+                </div>
+            `).join("");
+
+            invBox.style.display = "block";
+        }
+
+        invBox.addEventListener("click", function (e) {
+            const item = e.target.closest(".autocomplete-item");
+            if (!item) return;
+
+            window.location.href = "inventario_editar.php?id=" + item.dataset.id;
+        });
+
+        invInput.addEventListener("input", function () {
+            const q = invInput.value.trim();
+            clearTimeout(timeoutInv);
+
+            if (q.length < 1) {
+                invBox.style.display = "none";
+                return;
+            }
+
+            timeoutInv = setTimeout(() => {
+                fetch("buscar_inventario.php?q=" + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => renderInventario(data));
+            }, 200);
+        });
+    }
+
+    // =====================================================
+    // CERRAR MENÚS AL CLIC FUERA
+    // =====================================================
+
+    document.addEventListener("click", function (e) {
+        if (cliBox && !cliBox.contains(e.target) && e.target !== cliInput) {
+            cliBox.style.display = "none";
+        }
+        if (invBox && !invBox.contains(e.target) && e.target !== invInput) {
+            invBox.style.display = "none";
+        }
+    });
+
+});

@@ -1,0 +1,92 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = $_GET['id'] ?? null;
+$edit = $id !== null;
+
+$pageTitle = $edit ? "Editar campaña" : "Nueva campaña";
+include 'header.php';
+
+$datos = [
+    "nombre" => "",
+    "canal" => "Instagram",
+    "fecha_inicio" => "",
+    "fecha_fin" => "",
+    "presupuesto" => ""
+];
+
+if ($edit) {
+    $stmt = $pdo->prepare("SELECT * FROM CampañasMarketing WHERE campaña_id=:id");
+    $stmt->execute([':id' => $id]);
+    $datos = $stmt->fetch();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $datos['nombre'] = trim($_POST['nombre']);
+    $datos['canal'] = $_POST['canal'];
+    $datos['fecha_inicio'] = $_POST['fecha_inicio'];
+    $datos['fecha_fin'] = $_POST['fecha_fin'];
+    $datos['presupuesto'] = $_POST['presupuesto'];
+
+    if ($edit) {
+        $sql = "UPDATE CampañasMarketing
+                SET nombre=:n, canal=:c, fecha_inicio=:i, fecha_fin=:f, presupuesto=:p
+                WHERE campaña_id=:id";
+
+        $pdo->prepare($sql)->execute([
+            ':n'=>$datos['nombre'], ':c'=>$datos['canal'],
+            ':i'=>$datos['fecha_inicio'], ':f'=>$datos['fecha_fin'],
+            ':p'=>$datos['presupuesto'], ':id'=>$id
+        ]);
+
+    } else {
+        $sql = "INSERT INTO CampañasMarketing(nombre, canal, fecha_inicio, fecha_fin, presupuesto)
+                VALUES (:n,:c,:i,:f,:p)";
+
+        $pdo->prepare($sql)->execute([
+            ':n'=>$datos['nombre'], ':c'=>$datos['canal'],
+            ':i'=>$datos['fecha_inicio'], ':f'=>$datos['fecha_fin'],
+            ':p'=>$datos['presupuesto']
+        ]);
+    }
+
+    header("Location: campañas.php");
+    exit;
+}
+?>
+
+<h3><?=$pageTitle?></h3>
+
+<form method="post" class="card card-body shadow-sm">
+
+<label class="form-label">Nombre *</label>
+<input name="nombre" class="form-control" required value="<?=$datos['nombre']?>">
+
+<label class="form-label mt-2">Canal</label>
+<select name="canal" class="form-select">
+    <?php foreach(["Instagram","Facebook","Google Ads","Cartelería","Colaboración","Otro"] as $c): ?>
+        <option value="<?=$c?>" <?=$c==$datos['canal']?"selected":""?>><?=$c?></option>
+    <?php endforeach; ?>
+</select>
+
+<label class="form-label mt-2">Fecha inicio *</label>
+<input type="date" name="fecha_inicio" class="form-control" required value="<?=$datos['fecha_inicio']?>">
+
+<label class="form-label mt-2">Fecha fin *</label>
+<input type="date" name="fecha_fin" class="form-control" required value="<?=$datos['fecha_fin']?>">
+
+<label class="form-label mt-2">Presupuesto (€)</label>
+<input type="number" step="0.01" name="presupuesto" class="form-control" value="<?=$datos['presupuesto']?>">
+
+<div class="text-end mt-3">
+    <button class="btn btn-primary">Guardar</button>
+</div>
+
+</form>
+
+<?php include 'footer.php'; ?>

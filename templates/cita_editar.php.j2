@@ -1,0 +1,146 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = $_GET['id'] ?? null;
+
+// Datos por defecto
+$cita = [
+    'cliente_id' => '',
+    'empleado_id' => '',
+    'tratamiento_id' => '',
+    'fecha' => '',
+    'hora' => '',
+    'estado' => 'pendiente',
+    'notas' => ''
+];
+
+if ($id) {
+    $stmt = $pdo->prepare("SELECT * FROM Citas WHERE cita_id = ?");
+    $stmt->execute([$id]);
+    $cita = $stmt->fetch();
+}
+
+$stmtClientes = $pdo->query("SELECT cliente_id, nombre, apellido FROM Clientes WHERE activo=1 ORDER BY nombre");
+$clientes = $stmtClientes->fetchAll();
+
+$stmtEmpleados = $pdo->query("SELECT empleado_id, nombre, apellido FROM Empleados WHERE activo=1 ORDER BY nombre");
+$empleados = $stmtEmpleados->fetchAll();
+
+$stmtTrat = $pdo->query("SELECT tratamiento_id, nombre FROM Tratamientos ORDER BY nombre");
+$tratamientos = $stmtTrat->fetchAll();
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    $data = [
+        $_POST['cliente_id'],
+        $_POST['empleado_id'],
+        $_POST['tratamiento_id'],
+        $_POST['fecha'],
+        $_POST['hora'],
+        $_POST['estado'],
+        $_POST['notas']
+    ];
+
+    if ($id) {
+        $data[] = $id;
+        $sql = "UPDATE Citas SET cliente_id=?, empleado_id=?, tratamiento_id=?, fecha=?, hora=?, estado=?, notas=? WHERE cita_id=?";
+        $pdo->prepare($sql)->execute($data);
+    } else {
+        $sql = "INSERT INTO Citas (cliente_id, empleado_id, tratamiento_id, fecha, hora, estado, notas)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $pdo->prepare($sql)->execute($data);
+
+        $id = $pdo->lastInsertId();
+    }
+
+    header("Location: cita_detalle.php?id=" . $id);
+    exit;
+}
+
+$pageTitle = $id ? "Editar Cita" : "Nueva Cita";
+include 'header.php';
+?>
+
+<h3 class="mb-4"><i class="bi bi-calendar-plus me-2"></i><?= $pageTitle ?></h3>
+
+<form method="POST" class="card card-body shadow-sm">
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Cliente</label>
+            <select name="cliente_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <?php foreach ($clientes as $c): ?>
+                <option value="<?= $c['cliente_id'] ?>"
+                    <?= $cita['cliente_id'] == $c['cliente_id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['nombre']." ".$c['apellido']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Empleado</label>
+            <select name="empleado_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <?php foreach ($empleados as $e): ?>
+                <option value="<?= $e['empleado_id'] ?>"
+                    <?= $cita['empleado_id'] == $e['empleado_id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($e['nombre']." ".$e['apellido']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Tratamiento</label>
+            <select name="tratamiento_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <?php foreach ($tratamientos as $t): ?>
+                <option value="<?= $t['tratamiento_id'] ?>"
+                    <?= $cita['tratamiento_id'] == $t['tratamiento_id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($t['nombre']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Fecha</label>
+            <input type="date" name="fecha" class="form-control" required value="<?= $cita['fecha'] ?>">
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Hora</label>
+            <input type="time" name="hora" class="form-control" required value="<?= $cita['hora'] ?>">
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Estado</label>
+        <select name="estado" class="form-select">
+            <option value="pendiente" <?= $cita['estado'] === "pendiente" ? "selected" : "" ?>>Pendiente</option>
+            <option value="realizada" <?= $cita['estado'] === "realizada" ? "selected" : "" ?>>Realizada</option>
+            <option value="cancelada" <?= $cita['estado'] === "cancelada" ? "selected" : "" ?>>Cancelada</option>
+        </select>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label">Notas</label>
+        <textarea name="notas" class="form-control" rows="4"><?= htmlspecialchars($cita['notas']) ?></textarea>
+    </div>
+
+    <div class="text-end">
+        <a href="citas.php" class="btn btn-outline-secondary">Cancelar</a>
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+
+</form>
+
+<?php include 'footer.php'; ?>

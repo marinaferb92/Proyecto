@@ -1,0 +1,90 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$esEdicion = $id > 0;
+
+$pageTitle = $esEdicion ? "Editar sala" : "Nueva sala";
+include 'header.php';
+
+$sala = [
+    'nombre' => '',
+    'tipo' => 'Tratamiento',
+    'capacidad' => 1
+];
+
+if ($esEdicion) {
+    $stmt = $pdo->prepare("SELECT * FROM Salas WHERE sala_id=:id");
+    $stmt->execute(['id'=>$id]);
+    $sala = $stmt->fetch();
+}
+
+$tipos = ['Tratamiento','Consulta','Láser','Cabina','Quirófano'];
+
+$errores = [];
+$ok = '';
+
+if ($_SERVER['REQUEST_METHOD']=='POST') {
+
+    $sala['nombre'] = trim($_POST['nombre']);
+    $sala['tipo'] = $_POST['tipo'];
+    $sala['capacidad'] = (int)$_POST['capacidad'];
+
+    if ($sala['nombre']==='') $errores[]="El nombre es obligatorio.";
+
+    if (!$errores) {
+        if ($esEdicion) {
+            $sql = "UPDATE Salas SET nombre=:n,tipo=:t,capacidad=:c WHERE sala_id=:id";
+            $pdo->prepare($sql)->execute([
+                ':n'=>$sala['nombre'],':t'=>$sala['tipo'],':c'=>$sala['capacidad'],':id'=>$id
+            ]);
+            $ok="Sala actualizada";
+        } else {
+            $sql = "INSERT INTO Salas (nombre,tipo,capacidad) VALUES (:n,:t,:c)";
+            $pdo->prepare($sql)->execute([
+                ':n'=>$sala['nombre'],':t'=>$sala['tipo'],':c'=>$sala['capacidad']
+            ]);
+            header("Location: salas.php?msg=creada");
+            exit;
+        }
+    }
+}
+?>
+
+<h3><?=$pageTitle?></h3>
+
+<?php if($errores): ?>
+<div class="alert alert-danger"><?=implode("<br>",$errores)?></div>
+<?php endif; ?>
+
+<?php if($ok): ?>
+<div class="alert alert-success"><?=$ok?></div>
+<?php endif; ?>
+
+<form class="card card-body shadow-sm" method="post">
+
+<label class="form-label">Nombre *</label>
+<input name="nombre" class="form-control" value="<?=$sala['nombre']?>">
+
+<label class="form-label mt-2">Tipo</label>
+<select name="tipo" class="form-select">
+    <?php foreach($tipos as $t): ?>
+    <option value="<?=$t?>" <?=$sala['tipo']==$t?'selected':''?>><?=$t?></option>
+    <?php endforeach; ?>
+</select>
+
+<label class="form-label mt-2">Capacidad</label>
+<input type="number" name="capacidad" class="form-control" min="1"
+       value="<?=$sala['capacidad']?>">
+
+<div class="text-end mt-3">
+    <button class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+</div>
+
+</form>
+
+<?php include 'footer.php'; ?>

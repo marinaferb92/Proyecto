@@ -1,0 +1,34 @@
+<?php
+// tratamiento_borrar.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($id <= 0) {
+    header("Location: tratamientos.php");
+    exit;
+}
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Citas WHERE tratamiento_id = :id");
+$stmt->execute([':id' => $id]);
+$tieneCitas = $stmt->fetchColumn();
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM TratamientosPrevios WHERE tratamiento_id = :id");
+$stmt->execute([':id' => $id]);
+$tieneHistorial = $stmt->fetchColumn();
+
+if ($tieneCitas > 0 || $tieneHistorial > 0) {
+    $msg = "No se puede eliminar: el tratamiento tiene citas o tratamientos previos asociados.";
+    header("Location: tratamientos.php?error=" . urlencode($msg));
+    exit;
+}
+
+$stmt = $pdo->prepare("DELETE FROM Tratamientos WHERE tratamiento_id = :id");
+$stmt->execute([':id' => $id]);
+
+header("Location: tratamientos.php?msg=" . urlencode("Tratamiento eliminado correctamente."));
+exit;

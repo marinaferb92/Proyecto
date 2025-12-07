@@ -1,5 +1,5 @@
 ---
-- name: Crear usuario admin en la aplicación
+- name: Crear o actualizar usuario admin en la aplicación
   hosts: backend1
   become: yes
 
@@ -13,8 +13,8 @@
       shell: php -r 'echo password_hash("Admin123.", PASSWORD_DEFAULT);'
       register: admin_hash
 
-    # 2. Insertar usuario admin (solo si no existe)
-    - name: Insertar usuario admin (solo si no existe)
+    # 2. Crear usuario admin si no existe
+    - name: Crear usuario admin si no existe
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db.root_password }}"
@@ -25,8 +25,19 @@
           WHERE NOT EXISTS (SELECT 1 FROM Usuarios WHERE nombre_usuario='admin');
       when: admin_hash.stdout is defined
 
-    # 3. Verificar la contraseña generada
+    # 3. Actualizar contraseña del admin siempre
+    - name: Actualizar contraseña del admin siempre
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          UPDATE Usuarios
+          SET password_hash='{{ admin_hash.stdout }}'
+          WHERE nombre_usuario='admin';
+      when: admin_hash.stdout is defined
+
+    # 4. Mostrar hash generado
     - name: Verificar contraseña generada
       debug:
         msg: "El hash de la contraseña generado es: {{ admin_hash.stdout }}"
-      when: admin_hash.stdout is defined

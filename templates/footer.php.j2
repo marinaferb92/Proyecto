@@ -1,4 +1,37 @@
+</main>
+
+<footer class="text-center text-muted py-4">
+  <small>Clínica Estética — Panel de Gestión</small>
+</footer>
+
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/app/assets/js/custom.js"></script>
+
+<!-- Script Modo Oscuro -->
+<script>
+// Detectar botón
+const btnModo = document.getElementById("modoOscuroBtn");
+const body = document.body;
+
+// Cargar modo guardado
+if (localStorage.getItem("modo-oscuro") === "1") {
+    body.classList.add("dark-mode");
+    btnModo.innerHTML = '<i class="bi bi-sun-fill"></i>'; // icono sol
+}
+
+// Alternar modo
+btnModo.addEventListener("click", () => {
+    body.classList.toggle("dark-mode");
+
+    if (body.classList.contains("dark-mode")) {
+        localStorage.setItem("modo-oscuro", "1");
+        btnModo.innerHTML = '<i class="bi bi-sun-fill"></i>';
+    } else {
+        localStorage.setItem("modo-oscuro", "0");
+        btnModo.innerHTML = '<i class="bi bi-moon-fill"></i>';
+    }
+});
+</script>
+
 </body>
 </html>

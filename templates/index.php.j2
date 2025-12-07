@@ -2,17 +2,21 @@
 require "config.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    
+
     $user = $_POST["usuario"];
     $pass = $_POST["password"];
 
-    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE nombre_usuario = ? AND activo = 1 LIMIT 1");
-    $stmt->execute([$user]);
+    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE nombre_usuario = :user AND activo = 1 LIMIT 1");
+    $stmt->execute([':user' => $user]);
     $row = $stmt->fetch();
 
     if ($row && password_verify($pass, $row["password_hash"])) {
-        $_SESSION["user"] = $row["nombre_usuario"];
+
+        // Crear sesión correcta
+        $_SESSION["usuario_id"] = $row["usuario_id"];
+        $_SESSION["nombre_usuario"] = $row["nombre_usuario"];
         $_SESSION["rol"] = $row["rol"];
+
         header("Location: dashboard.php");
         exit;
     }
@@ -26,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <h3 class="text-center">Acceso</h3>
 
     <?php if(isset($error)): ?>
-    <div class="alert alert-danger text-center"><?= $error ?></div>
+        <div class="alert alert-danger text-center"><?= $error ?></div>
     <?php endif; ?>
 
     <form method="POST">

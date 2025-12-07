@@ -1,127 +1,36 @@
 <?php
-require "auth.php";
-require "config.php";
-$pageTitle="Inventario";
-include "header.php";
-include "navbar.php";
+require_once 'config.php';
+require_once 'auth.php';
 
-# --- AGREGAR ---
-if (isset($_POST["add"])) {
-    $stmt = $pdo->prepare("
-        INSERT INTO Inventario(nombre, tipo, stock_actual, unidad, costo_unitario)
-        VALUES (?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([
-        $_POST["nombre"],
-        $_POST["tipo"],
-        $_POST["stock"],
-        $_POST["unidad"],
-        $_POST["costo"]
-    ]);
-}
+require_login();
+require_role(['admin','recepcionista']);
 
-# --- BORRAR ---
-if (isset($_POST["delete"])) {
-    $stmt = $pdo->prepare("DELETE FROM Inventario WHERE item_id = ?");
-    $stmt->execute([$_POST["id"]]);
-}
-
-# --- EDITAR ---
-if (isset($_POST["edit"])) {
-    $stmt = $pdo->prepare("
-        UPDATE Inventario SET nombre=?, tipo=?, stock_actual=?, unidad=?, costo_unitario=?
-        WHERE item_id=?
-    ");
-    $stmt->execute([
-        $_POST["nombre_edit"],
-        $_POST["tipo_edit"],
-        $_POST["stock_edit"],
-        $_POST["unidad_edit"],
-        $_POST["costo_edit"],
-        $_POST["id"]
-    ]);
-}
-
-$inventario = $pdo->query("SELECT * FROM Inventario ORDER BY item_id DESC")->fetchAll();
+$pageTitle = "Inventario";
+include 'header.php';
 ?>
 
-<div class="container mt-4">
-<h2>Inventario</h2>
+<h3 class="mb-4"><i class="bi bi-box-seam me-2"></i> Inventario</h3>
 
-<form method="POST" class="card p-3 shadow mb-4">
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <label class="form-label fw-bold">Buscar material o producto</label>
 
-    <h5>Añadir material / producto</h5>
+    <div class="position-relative">
+      <input 
+        type="text" 
+        id="inventario-search" 
+        class="form-control form-control-lg live-search-input"
+        placeholder="Escribe para buscar..."
+        autocomplete="off"
+      >
 
-    <input name="nombre" placeholder="Nombre" class="form-control mb-2" required>
-
-    <select name="tipo" class="form-control mb-2">
-        <option value="insumo">Insumo</option>
-        <option value="producto">Producto</option>
-        <option value="equipamiento">Equipamiento</option>
-    </select>
-
-    <input name="stock" type="number" placeholder="Stock" class="form-control mb-2">
-    <input name="unidad" placeholder="Unidad (ml, unidades, etc.)" class="form-control mb-2">
-    <input name="costo" type="number" step="0.01" placeholder="Costo unitario" class="form-control mb-2">
-
-    <button name="add" class="btn btn-primary w-100">Guardar</button>
-</form>
-
-<table class="table table-bordered shadow bg-white">
-    <tr>
-        <th>ID</th><th>Nombre</th><th>Tipo</th><th>Stock</th><th>Unidad</th>
-        <th>Costo</th><th>Acciones</th>
-    </tr>
-
-    <?php foreach($inventario as $i): ?>
-    <tr>
-        <td><?= $i["item_id"] ?></td>
-        <td><?= $i["nombre"] ?></td>
-        <td><?= $i["tipo"] ?></td>
-        <td><?= $i["stock_actual"] ?></td>
-        <td><?= $i["unidad"] ?></td>
-        <td><?= $i["costo_unitario"] ?> €</td>
-
-        <td style="width:200px;">
-            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" 
-                    data-bs-target="#editModal<?= $i['item_id'] ?>">Editar</button>
-
-            <form method="POST" style="display:inline;">
-                <input type="hidden" name="id" value="<?= $i['item_id'] ?>">
-                <button name="delete" class="btn btn-danger btn-sm"
-                        onclick="return confirm('¿Eliminar item del inventario?')">Eliminar</button>
-            </form>
-        </td>
-    </tr>
-
-    <!-- Modal -->
-    <div class="modal fade" id="editModal<?= $i['item_id'] ?>">
-      <div class="modal-dialog">
-        <div class="modal-content p-3">
-            <form method="POST">
-
-                <input type="hidden" name="id" value="<?= $i['item_id'] ?>">
-
-                <input name="nombre_edit" value="<?= $i['nombre'] ?>" class="form-control mb-2">
-                <select name="tipo_edit" class="form-control mb-2">
-                    <option <?= $i['tipo']=='insumo'?'selected':'' ?> value="insumo">Insumo</option>
-                    <option <?= $i['tipo']=='producto'?'selected':'' ?> value="producto">Producto</option>
-                    <option <?= $i['tipo']=='equipamiento'?'selected':'' ?> value="equipamiento">Equipamiento</option>
-                </select>
-
-                <input name="stock_edit" type="number" value="<?= $i['stock_actual'] ?>" class="form-control mb-2">
-                <input name="unidad_edit" value="<?= $i['unidad'] ?>" class="form-control mb-2">
-                <input name="costo_edit" type="number" step="0.01" value="<?= $i['costo_unitario'] ?>" class="form-control mb-2">
-
-                <button name="edit" class="btn btn-success w-100">Guardar cambios</button>
-            </form>
-        </div>
-      </div>
+      <!-- Resultados -->
+      <div id="inventario-resultados" class="autocomplete-results"></div>
     </div>
-
-    <?php endforeach; ?>
-</table>
-
+  </div>
 </div>
 
-<?php include "footer.php"; ?>
+<!-- Contenedor donde se cargará el listado dinámicamente -->
+<div id="inventario-lista"></div>
+
+<?php include 'footer.php'; ?>

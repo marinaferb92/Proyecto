@@ -1,0 +1,148 @@
+<?php
+// movimientos_inventario.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+$stmt = $pdo->prepare("
+    SELECT * FROM Inventario WHERE item_id = :id
+");
+$stmt->execute([':id' => $id]);
+$item = $stmt->fetch();
+
+if (!$item) {
+    header("Location: inventario.php");
+    exit;
+}
+
+$pageTitle = "Movimientos de inventario";
+include 'header.php';
+
+$errores = [];
+$ok = '';
+
+// Procesar nuevo movimiento
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tipo = $_POST['tipo'] ?? '';
+    $cantidad = (int)($_POST['cantidad'] ?? 0);
+    $desc = trim($_POST['descripcion'] ?? '');
+
+    if (!in_array($tipo, ['entrada','salida','ajuste'])) {
+        $errores[] = "Tipo inválido.";
+    }
+    if ($cantidad <= 0) {
+        $errores[] = "La cantidad debe ser mayor que 0.";
+    }
+
+    if (!$errores) {
+        $stmt = $pdo->prepare("
+            INSERT INTO MovimientosInventario (item_id, tipo, cantidad, descripcion)
+            VALUES (:id, :tipo, :cant, :desc)
+        ");
+        $stmt->execute([
+            ':id' => $id,
+            ':tipo' => $tipo,
+            ':cant' => $cantidad,
+            ':desc' => $desc
+        ]);
+        $ok = "Movimiento registrado.";
+    }
+}
+
+// Historial
+$movs = $pdo->prepare("
+    SELECT * FROM MovimientosInventario
+    WHERE item_id = :id
+    ORDER BY fecha_movimiento DESC
+");
+$movs->execute([':id' => $id]);
+$movs = $movs->fetchAll();
+?>
+
+<div class="d-flex justify-content-between mb-3">
+    <h3>
+        <i class="bi bi-clock-history"></i>
+        Movimientos de: <?= htmlspecialchars($item['nombre']) ?>
+    </h3>
+    <a href="inventario.php" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<?php if ($errores): ?>
+<div class="alert alert-danger">
+    <?php foreach ($errores as $e): ?>
+        <div><?= htmlspecialchars($e) ?></div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($ok): ?>
+<div class="alert alert-success"><?= htmlspecialchars($ok) ?></div>
+<?php endif; ?>
+
+<form method="post" class="card shadow-sm p-3 mb-4">
+    <h5>Registrar movimiento</h5>
+
+    <div class="row g-2 mt-1">
+        <div class="col-md-3">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-select">
+                <option value="entrada">Entrada</option>
+                <option value="salida">Salida</option>
+                <option value="ajuste">Ajuste</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Cantidad</label>
+            <input type="number" name="cantidad" min="1" class="form-control">
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Descripción</label>
+            <input type="text" name="descripcion" class="form-control"
+                   placeholder="Opcional">
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <button class="btn btn-primary"><i class="bi bi-plus-circle"></i> Registrar</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5>Historial</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($movs): foreach ($movs as $m): ?>
+                <tr>
+                    <td><?= htmlspecialchars($m['fecha_movimiento']) ?></td>
+                    <td><?= htmlspecialchars($m['tipo']) ?></td>
+                    <td><?= htmlspecialchars($m['cantidad']) ?></td>
+                    <td><?= htmlspecialchars($m['descripcion']) ?></td>
+                </tr>
+                <?php endforeach; else: ?>
+                <tr><td colspan="4" class="text-center text-muted py-3">No hay movimientos registrados.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<?php include 'footer.php'; ?>

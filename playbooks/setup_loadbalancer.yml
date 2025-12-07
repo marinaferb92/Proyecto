@@ -1,16 +1,19 @@
 ---
-- name: Configurar Load Balancer
-  hosts: lb
+- name: Configurar Load Balancer con NGINX
+  hosts: loadbalancer
   become: yes
+
   vars_files:
     - ../vars/variables.yml
+
   tasks:
+
     - name: Actualizar sistema
       apt:
         update_cache: yes
         upgrade: yes
 
-    - name: Instalar Nginx
+    - name: Instalar NGINX
       apt:
         name: nginx
         state: present
@@ -20,28 +23,27 @@
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Copiar configuración de Nginx
-      copy:
-        src: ../templates/loadbalancer.conf
+    - name: Copiar configuración del Load Balancer
+      template:
+        src: "../templates/loadbalancer.conf.j2"
         dest: /etc/nginx/sites-available/loadbalancer.conf
+        owner: root
+        group: root
+        mode: "0644"
 
-    - name: Reemplazar valores en configuración de Nginx
-      replace:
-        path: /etc/nginx/sites-available/loadbalancer.conf
-        regexp: "{{ item.regex }}"
-        replace: "{{ item.value }}"
-      loop:
-        - { regex: 'IP_FRONTEND_1', value: '{{ ip.frontend1 }}' }
-        - { regex: 'IP_FRONTEND_2', value: '{{ ip.frontend2 }}' }
-        - { regex: 'LE_DOMAIN', value: '{{ certbot.domain }}' }
-
-    - name: Habilitar el sitio Nginx
+    - name: Habilitar configuración del Load Balancer
       file:
         src: /etc/nginx/sites-available/loadbalancer.conf
         dest: /etc/nginx/sites-enabled/loadbalancer.conf
         state: link
+        force: yes
 
-    - name: Reiniciar Nginx
-      systemd:
+    - name: Probar configuración de NGINX
+      command: nginx -t
+      register: nginx_test
+      ignore_errors: no
+
+    - name: Reiniciar NGINX
+      service:
         name: nginx
         state: restarted

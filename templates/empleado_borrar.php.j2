@@ -1,0 +1,21 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = (int)($_GET['id'] ?? 0);
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Citas WHERE empleado_id=:id");
+$stmt->execute([':id'=>$id]);
+
+if ($stmt->fetchColumn() > 0) {
+    header("Location: empleados.php?error=" . urlencode("No se puede borrar: el empleado tiene citas registradas."));
+    exit;
+}
+
+$pdo->prepare("DELETE FROM Empleados WHERE empleado_id=:id")->execute([':id'=>$id]);
+
+header("Location: empleados.php?msg=Empleado eliminado");
+exit;

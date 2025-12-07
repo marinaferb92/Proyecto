@@ -1,0 +1,15 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = $_GET['id'] ?? null;
+if (!$id) die("ID inválido");
+
+$stmt = $pdo->prepare("DELETE FROM Citas WHERE cita_id = ?");
+$stmt->execute([$id]);
+
+header("Location: citas.php");
+exit;

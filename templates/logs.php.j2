@@ -1,0 +1,113 @@
+<?php
+// logs.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$pageTitle = "Logs de actividad";
+include 'header.php';
+
+$fecha_desde = $_GET['desde'] ?? '';
+$fecha_hasta = $_GET['hasta'] ?? '';
+$empleado_id = isset($_GET['empleado_id']) ? (int)$_GET['empleado_id'] : 0;
+
+$sql = "SELECT l.log_id, l.accion, l.fecha,
+               e.empleado_id, e.nombre, e.apellido
+        FROM LogsActividad l
+        LEFT JOIN Empleados e ON e.empleado_id = l.empleado_id
+        WHERE 1=1";
+$params = [];
+
+if ($fecha_desde !== '') {
+    $sql .= " AND l.fecha >= :desde";
+    $params[':desde'] = $fecha_desde . ' 00:00:00';
+}
+if ($fecha_hasta !== '') {
+    $sql .= " AND l.fecha <= :hasta";
+    $params[':hasta'] = $fecha_hasta . ' 23:59:59';
+}
+if ($empleado_id > 0) {
+    $sql .= " AND l.empleado_id = :emp";
+    $params[':emp'] = $empleado_id;
+}
+
+$sql .= " ORDER BY l.fecha DESC LIMIT 500";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$logs = $stmt->fetchAll();
+
+$empleados = $pdo->query("SELECT empleado_id, nombre, apellido FROM Empleados ORDER BY apellido, nombre")->fetchAll();
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Logs de actividad</h3>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form class="row g-2" method="get">
+      <div class="col-md-3">
+        <label class="form-label mb-1">Desde</label>
+        <input type="date" name="desde" class="form-control" value="<?= htmlspecialchars($fecha_desde) ?>">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label mb-1">Hasta</label>
+        <input type="date" name="hasta" class="form-control" value="<?= htmlspecialchars($fecha_hasta) ?>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label mb-1">Empleado</label>
+        <select name="empleado_id" class="form-select">
+          <option value="0">Todos</option>
+          <?php foreach ($empleados as $e): ?>
+            <option value="<?= $e['empleado_id'] ?>" <?= $empleado_id === (int)$e['empleado_id'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars($e['apellido'] . ', ' . $e['nombre']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-primary w-100">
+          <i class="bi bi-search"></i> Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha</th>
+          <th>Empleado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if ($logs): ?>
+          <?php foreach ($logs as $l): ?>
+            <tr>
+              <td><?= htmlspecialchars($l['fecha']) ?></td>
+              <td>
+                <?php if ($l['empleado_id']): ?>
+                  <?= htmlspecialchars($l['apellido'] . ', ' . $l['nombre']) ?>
+                <?php else: ?>
+                  <span class="text-muted">Sistema</span>
+                <?php endif; ?>
+              </td>
+              <td><?= htmlspecialchars($l['accion']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <tr><td colspan="3" class="text-center text-muted py-3">No hay registros para los filtros seleccionados.</td></tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<?php include 'footer.php'; ?>

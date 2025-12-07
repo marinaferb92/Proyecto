@@ -1,0 +1,138 @@
+<?php
+// estadisticas.php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$pageTitle = "Estadísticas";
+include 'header.php';
+
+$ingresos = $pdo->query("SELECT * FROM vw_ingresos_mensuales ORDER BY año_mes DESC LIMIT 12")->fetchAll();
+$tratamientos_top = $pdo->query("SELECT * FROM vw_tratamientos_mas_demandados LIMIT 10")->fetchAll();
+$stock_critico = $pdo->query("SELECT * FROM vw_stock_critico ORDER BY stock_actual ASC")->fetchAll();
+$productividad = $pdo->query("SELECT * FROM vw_productividad_empleados")->fetchAll();
+?>
+
+<h3 class="mb-3"><i class="bi bi-graph-up-arrow me-2"></i>Estadísticas de la clínica</h3>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Ingresos mensuales</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Mes</th>
+              <th>Ingresos</th>
+              <th>Pagos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($ingresos as $row): ?>
+              <tr>
+                <td><?= htmlspecialchars($row['año_mes']) ?></td>
+                <td><?= number_format($row['ingresos_totales'], 2) ?> €</td>
+                <td><?= $row['pagos_totales'] ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Tratamientos más demandados</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Tratamiento</th>
+              <th>Nº citas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($tratamientos_top as $row): ?>
+              <tr>
+                <td><?= htmlspecialchars($row['nombre']) ?></td>
+                <td><?= $row['numero_citas'] ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Stock crítico</h5>
+      </div>
+      <div class="card-body">
+        <?php if ($stock_critico): ?>
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Producto</th>
+                <th>Stock</th>
+                <th>Unidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($stock_critico as $row): ?>
+                <tr>
+                  <td><?= htmlspecialchars($row['nombre']) ?></td>
+                  <td><?= $row['stock_actual'] ?></td>
+                  <td><?= htmlspecialchars($row['unidad']) ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <p class="text-muted mb-0">No hay productos en stock crítico.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Productividad por empleado</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Empleado</th>
+              <th>Citas totales</th>
+              <th>Realizadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($productividad as $row): ?>
+              <tr>
+                <td><?= htmlspecialchars($row['nombre'] . ' ' . $row['apellido']) ?></td>
+                <td><?= $row['citas_totales'] ?></td>
+                <td><?= $row['realizadas'] ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php include 'footer.php'; ?>

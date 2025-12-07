@@ -1,0 +1,63 @@
+---
+- name: Configurar análisis automático en backend
+  hosts: backend1
+  become: yes
+
+  vars:
+    analisis_dir: /home/ubuntu/analisis_clinica
+
+  tasks:
+
+    - name: Instalar dependencias Python
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Instalar librerías necesarias
+      pip:
+        name:
+          - mysql-connector-python
+          - pandas
+          - matplotlib
+          - scikit-learn
+
+    - name: Crear directorio de análisis
+      file:
+        path: "{{ analisis_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copiar scripts de análisis
+      copy:
+        src: "../analisis_clinica/"
+        dest: "{{ analisis_dir }}/"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Crear script wrapper
+      copy:
+        dest: "{{ analisis_dir }}/run_analisis.sh"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          cd {{ analisis_dir }}
+          python3 analisis_rfm.py
+          python3 stock_analisis.py
+          python3 tratamientos_rentables.py
+          python3 productividad_empleados.py
+
+    - name: Añadir cron job diario 03:00
+      cron:
+        name: "Analisis clinica diario"
+        user: ubuntu
+        minute: "0"
+        hour: "3"
+        job: "{{ analisis_dir }}/run_analisis.sh >> {{ analisis_dir }}/analisis.log 2>&1"

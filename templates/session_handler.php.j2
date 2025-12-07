@@ -6,12 +6,21 @@ class MySQLSessionHandler implements SessionHandlerInterface
 
     public function open($savePath, $sessionName)
     {
-        $this->pdo = new PDO(
-            "mysql:host={{ ip.backend1 }};dbname={{ db.name }}",
-            "{{ db.user }}",
-            "{{ db.password }}"
-        );
-        return true;
+        try {
+            $this->pdo = new PDO(
+                "mysql:host={{ ip.backend1 }};dbname={{ db.name }};charset=utf8mb4",
+                "{{ db.user }}",
+                "{{ db.password }}",
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ]
+            );
+            return true;
+        } catch (PDOException $e) {
+            error_log("Session DB connection failed: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function close()
@@ -24,8 +33,8 @@ class MySQLSessionHandler implements SessionHandlerInterface
     {
         $stmt = $this->pdo->prepare("SELECT data FROM php_sessions WHERE id = ?");
         $stmt->execute([$id]);
-        $row = $stmt->fetchColumn();
-        return $row ? $row : '';
+        $data = $stmt->fetchColumn();
+        return $data ?: '';
     }
 
     public function write($id, $data)
@@ -51,4 +60,3 @@ class MySQLSessionHandler implements SessionHandlerInterface
         return $stmt->execute([$old]);
     }
 }
-?>

@@ -1,0 +1,15 @@
+upstream {{ loadbalancer.upstream_name }} {
+    server {{ ip.frontend1 }}:{{ loadbalancer.backend_port }};
+    server {{ ip.frontend2 }}:{{ loadbalancer.backend_port }};
+}
+
+server {
+    listen 80;
+    server_name {{ certbot.domain }};
+
+    location / {
+        proxy_pass http://{{ loadbalancer.upstream_name }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}

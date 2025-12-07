@@ -1,57 +1,44 @@
 <?php
-require "auth.php";
-require "config.php";
-$pageTitle="Clientes";
-include "header.php";
-include "navbar.php";
+require_once 'config.php';
+require_once 'auth.php';
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    if (isset($_POST["add"])) {
-        $stmt = $pdo->prepare("INSERT INTO Clientes(nombre, apellido, telefono, correo) VALUES (?,?,?,?)");
-        $stmt->execute([$_POST["nombre"], $_POST["apellido"], $_POST["telefono"], $_POST["correo"]]);
-    }
+require_login();
+require_role(['admin','recepcionista']);
 
-    if (isset($_POST["delete"])) {
-        $stmt = $pdo->prepare("DELETE FROM Clientes WHERE cliente_id = ?");
-        $stmt->execute([$_POST["id"]]);
-    }
-}
-
-$clientes = $pdo->query("SELECT * FROM Clientes ORDER BY cliente_id DESC")->fetchAll();
+$pageTitle = "Clientes";
+include 'header.php';
 ?>
 
-<div class="container mt-4">
-    <h2>Clientes</h2>
+<!-- TÍTULO + BOTÓN -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="m-0"><i class="bi bi-people me-2"></i>Clientes</h3>
 
-    <form method="POST" class="card p-3 mb-4 shadow">
-        <h5>Añadir Cliente</h5>
-        <input class="form-control mb-2" name="nombre" placeholder="Nombre" required>
-        <input class="form-control mb-2" name="apellido" placeholder="Apellido" required>
-        <input class="form-control mb-2" name="telefono" placeholder="Teléfono">
-        <input class="form-control mb-2" name="correo" placeholder="Correo">
-        <button name="add" class="btn btn-primary mt-2">Guardar</button>
-    </form>
-
-    <table class="table table-bordered bg-white shadow">
-        <tr>
-            <th>ID</th><th>Nombre</th><th>Apellido</th><th>Teléfono</th><th>Correo</th><th>Acción</th>
-        </tr>
-        <?php foreach($clientes as $c): ?>
-        <tr>
-            <td><?= $c["cliente_id"] ?></td>
-            <td><?= $c["nombre"] ?></td>
-            <td><?= $c["apellido"] ?></td>
-            <td><?= $c["telefono"] ?></td>
-            <td><?= $c["correo"] ?></td>
-            <td>
-                <form method="POST">
-                    <input type="hidden" name="id" value="<?= $c['cliente_id'] ?>">
-                    <button name="delete" class="btn btn-danger btn-sm">Eliminar</button>
-                </form>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+  <a href="cliente_editar.php" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> Nuevo cliente
+  </a>
 </div>
 
-<?php include "footer.php"; ?>
+<!-- TARJETA BUSCADOR -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <label class="form-label fw-bold">Buscar cliente</label>
+
+    <div class="position-relative">
+      <input 
+        type="text" 
+        id="buscador-clientes" 
+        class="form-control form-control-lg cliente-autocomplete"
+        placeholder="Buscar por nombre, apellido, DNI o teléfono..."
+        autocomplete="off"
+      >
+
+      <!-- Caja de resultados -->
+      <div id="cliente-resultados" class="autocomplete-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Resultados dinámicos -->
+<div id="cliente-lista"></div>
+
+<?php include 'footer.php'; ?>

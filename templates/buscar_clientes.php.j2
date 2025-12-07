@@ -1,0 +1,29 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$q = trim($_GET['q'] ?? '');
+
+if ($q === '') {
+    echo json_encode([]);
+    exit;
+}
+
+$stmt = $pdo->prepare("
+    SELECT cliente_id, nombre, apellido, dni, telefono 
+    FROM Clientes
+    WHERE nombre LIKE :q 
+       OR apellido LIKE :q
+       OR dni LIKE :q
+       OR telefono LIKE :q
+    ORDER BY nombre ASC
+    LIMIT 10
+");
+
+$stmt->execute([':q' => "%$q%"]);
+$clientes = $stmt->fetchAll();
+
+echo json_encode($clientes);

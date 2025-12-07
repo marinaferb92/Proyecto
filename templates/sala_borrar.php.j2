@@ -1,0 +1,22 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$id = (int)($_GET['id'] ?? 0);
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Citas WHERE sala_id=:id");
+$stmt->execute(['id'=>$id]);
+$asociadas = $stmt->fetchColumn();
+
+if ($asociadas > 0) {
+    header("Location: salas.php?error=" . urlencode("No se puede borrar: la sala tiene citas asociadas."));
+    exit;
+}
+
+$pdo->prepare("DELETE FROM Salas WHERE sala_id=:id")->execute(['id'=>$id]);
+
+header("Location: salas.php?msg=Sala eliminada");
+exit;
