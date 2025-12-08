@@ -1,5 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container-fluid">
+
         <a class="navbar-brand" href="dashboard.php">
             <i class="bi bi-building"></i> Clínica Estética
         </a>
@@ -23,26 +24,25 @@
 
             </ul>
 
-            <ul class="navbar-nav align-items-center">
-
-                <!-- SWITCH DARK MODE -->
-                <li class="nav-item me-3">
-                    <button id="toggle-dark" class="btn btn-sm btn-outline-light">
-                        <i id="dark-icon" class="bi bi-moon-fill"></i>
-                    </button>
-                </li>
-
+            <!-- Usuario -->
+            <ul class="navbar-nav">
                 <?php if (!empty($_SESSION['usuario_id'])): ?>
                     <li class="nav-item">
-                        <span class="navbar-text me-2">
+                        <span class="navbar-text me-3">
                             <i class="bi bi-person-circle"></i>
-                            <?= htmlspecialchars($_SESSION['nombre_usuario'] ?? '') ?>
-                            (<?= htmlspecialchars($_SESSION['rol'] ?? '') ?>)
+                            <?= htmlspecialchars($_SESSION['nombre_usuario']) ?>
+                            (<?= htmlspecialchars($_SESSION['rol']) ?>)
                         </span>
+                    </li>
+                    <li class="nav-item">
+                        <button id="modoOscuroBtn" class="btn btn-sm btn-outline-light me-2">
+                            <i class="bi bi-moon-stars"></i>
+                        </button>
                     </li>
                     <li class="nav-item"><a class="nav-link" href="logout.php">Salir</a></li>
                 <?php endif; ?>
             </ul>
+
         </div>
     </div>
 </nav>
