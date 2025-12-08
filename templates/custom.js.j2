@@ -1,142 +1,136 @@
-// =====================================================
+// ==============================
 // TOGGLE DARK MODE
-// =====================================================
-
-document.addEventListener("DOMContentLoaded", function () {
+// ==============================
+document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("dark-mode-toggle");
 
     if (toggle) {
-        toggle.addEventListener("click", function () {
+        toggle.addEventListener("click", () => {
             document.body.classList.toggle("dark-mode");
-
-            // Guardar preferencia
             localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
         });
 
-        // Cargar preferencia al iniciar
         if (localStorage.getItem("darkMode") === "true") {
             document.body.classList.add("dark-mode");
         }
     }
 });
 
-// =====================================================
-// AUTOCOMPLETADO CLIENTES
-// =====================================================
+// ==============================
+// AUTOCOMPLETE CLIENTES
+// ==============================
 
 document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("buscador-clientes");
+    const box   = document.getElementById("cliente-resultados");
 
-    const cliInput = document.getElementById("buscador-clientes");
-    const cliBox = document.getElementById("cliente-resultados");
+    if (!input || !box) return;
 
-    if (cliInput && cliBox) {
-        let timeoutCli = null;
+    let timeout = null;
 
-        function renderClientes(data) {
-            if (data.length === 0) {
-                cliBox.innerHTML = "<div class='autocomplete-item text-muted'>Sin resultados</div>";
-                cliBox.style.display = "block";
-                return;
-            }
-
-            cliBox.innerHTML = data.map(c => `
-                <div class="autocomplete-item" data-id="${c.cliente_id}">
-                    <strong>${c.nombre} ${c.apellido}</strong><br>
-                    <span class="text-muted small">${c.dni} · ${c.telefono}</span>
-                </div>
-            `).join("");
-
-            cliBox.style.display = "block";
+    function render(data) {
+        if (data.length === 0) {
+            box.innerHTML = `<div class="autocomplete-item text-muted">Sin resultados</div>`;
+            box.style.display = "block";
+            return;
         }
 
-        cliBox.addEventListener("click", function (e) {
-            const item = e.target.closest(".autocomplete-item");
-            if (item) {
-                window.location.href = "cliente_detalle.php?id=" + item.dataset.id;
-            }
-        });
+        box.innerHTML = data.map(c => `
+            <div class="autocomplete-item" data-id="${c.cliente_id}">
+                <strong>${c.nombre} ${c.apellido}</strong><br>
+                <small class="text-muted">${c.dni} · ${c.telefono}</small>
+            </div>
+        `).join("");
 
-        cliInput.addEventListener("input", function () {
-            const q = cliInput.value.trim();
-            clearTimeout(timeoutCli);
-
-            if (q.length < 2) {
-                cliBox.style.display = "none";
-                return;
-            }
-
-            timeoutCli = setTimeout(() => {
-                fetch("buscar_clientes.php?q=" + encodeURIComponent(q))
-                    .then(r => r.json())
-                    .then(data => renderClientes(data));
-            }, 200);
-        });
+        box.style.display = "block";
     }
 
-    // =====================================================
-    // LIVE SEARCH INVENTARIO
-    // =====================================================
+    box.addEventListener("click", e => {
+        const item = e.target.closest(".autocomplete-item");
+        if (item) window.location.href = "cliente_detalle.php?id=" + item.dataset.id;
+    });
 
-    const invInput = document.getElementById("inventario-search");
-    const invBox = document.getElementById("inventario-resultados");
+    input.addEventListener("input", () => {
+        const q = input.value.trim();
+        clearTimeout(timeout);
 
-    if (invInput && invBox) {
-        let timeoutInv = null;
-
-        function renderInventario(data) {
-            if (data.length === 0) {
-                invBox.innerHTML = "<div class='autocomplete-item text-muted'>Sin resultados</div>";
-                invBox.style.display = "block";
-                return;
-            }
-
-            invBox.innerHTML = data.map(item => `
-                <div class="autocomplete-item" data-id="${item.item_id}">
-                    <strong>${item.nombre}</strong><br>
-                    <span class="text-muted small">${item.tipo}</span><br>
-                    ${item.stock_actual < 10 
-                        ? `<span class="badge bg-danger">Stock bajo (${item.stock_actual})</span>`
-                        : `<span class="badge bg-success">${item.stock_actual} en stock</span>`}
-                </div>
-            `).join("");
-
-            invBox.style.display = "block";
+        if (q.length < 2) {
+            box.style.display = "none";
+            return;
         }
 
-        invBox.addEventListener("click", function (e) {
-            const item = e.target.closest(".autocomplete-item");
-            if (item) {
-                window.location.href = "inventario_editar.php?id=" + item.dataset.id;
-            }
-        });
+        timeout = setTimeout(() => {
+            fetch("buscar_clientes.php?q=" + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(render);
+        }, 200);
+    });
+});
 
-        invInput.addEventListener("input", function () {
-            const q = invInput.value.trim();
-            clearTimeout(timeoutInv);
+// ==============================
+// AUTOCOMPLETE INVENTARIO
+// ==============================
 
-            if (q.length < 1) {
-                invBox.style.display = "none";
-                return;
-            }
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("inventario-search");
+    const box   = document.getElementById("inventario-resultados");
 
-            timeoutInv = setTimeout(() => {
-                fetch("buscar_inventario.php?q=" + encodeURIComponent(q))
-                    .then(r => r.json())
-                    .then(data => renderInventario(data));
-            }, 200);
-        });
+    if (!input || !box) return;
+
+    let timeout = null;
+
+    function renderInv(data) {
+        if (data.length === 0) {
+            box.innerHTML = `<div class="autocomplete-item text-muted">Sin resultados</div>`;
+            box.style.display = "block";
+            return;
+        }
+
+        box.innerHTML = data.map(item => `
+            <div class="autocomplete-item" data-id="${item.item_id}">
+                <strong>${item.nombre}</strong><br>
+                <small class="text-muted">${item.tipo}</small><br>
+                ${item.stock_actual < 10
+                    ? `<span class="badge bg-danger">Stock bajo (${item.stock_actual})</span>`
+                    : `<span class="badge bg-success">${item.stock_actual} en stock</span>`}
+            </div>
+        `).join("");
+
+        box.style.display = "block";
     }
 
-    // =====================================================
-    // CERRAR MENÚS AL CLIC FUERA
-    // =====================================================
+    box.addEventListener("click", e => {
+        const item = e.target.closest(".autocomplete-item");
+        if (item) window.location.href = "inventario_editar.php?id=" + item.dataset.id;
+    });
 
-    document.addEventListener("click", function (e) {
-        if (cliBox && !cliBox.contains(e.target) && e.target !== cliInput) {
-            cliBox.style.display = "none";
+    input.addEventListener("input", () => {
+        const q = input.value.trim();
+        clearTimeout(timeout);
+
+        if (q.length < 1) {
+            box.style.display = "none";
+            return;
         }
-        if (invBox && !invBox.contains(e.target) && e.target !== invInput) {
-            invBox.style.display = "none";
+
+        timeout = setTimeout(() => {
+            fetch("buscar_inventario.php?q=" + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(renderInv);
+        }, 200);
+    });
+});
+
+// ==============================
+// CERRAR AUTOCOMPLETE AL HACER CLICK FUERA
+// ==============================
+
+document.addEventListener("click", e => {
+    const boxes = document.querySelectorAll(".autocomplete-results");
+
+    boxes.forEach(box => {
+        if (!box.contains(e.target) && e.target.tagName !== "INPUT") {
+            box.style.display = "none";
         }
     });
 });
