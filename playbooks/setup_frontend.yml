@@ -7,7 +7,6 @@
 
   tasks:
 
-    # Instalar Apache y PHP
     - name: Install Apache and required PHP packages
       apt:
         name:
@@ -24,14 +23,13 @@
           - php-zip
           - php-intl
         state: present
+        update_cache: yes
 
-    - name: Ensure PHP module is enabled
-      command: "a2enmod php8.3"
-      when: ansible_facts.packages['php8.3'] is not defined
+    - name: Enable PHP module
+      command: a2enmod php8.3
       ignore_errors: yes
 
-    # Configuración de Apache (habilitar mod_rewrite, configuración del sitio)
-    - name: Enable mod_rewrite and configure Apache site
+    - name: Configure Default VirtualHost
       copy:
         dest: /etc/apache2/sites-available/000-default.conf
         content: |
@@ -48,8 +46,6 @@
           </VirtualHost>
       notify: restart_apache
 
-
-    # Actualizar php.ini para manejar sesiones correctamente
     - name: Update php.ini for session handler
       template:
         src: ../templates/php.ini.j2

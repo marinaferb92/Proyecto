@@ -8,12 +8,10 @@
 
   tasks:
 
-    # 1. Generar hash PHP de la contraseña
     - name: Generar hash PHP de la contraseña
       shell: php -r 'echo password_hash("Admin123.", PASSWORD_DEFAULT);'
       register: admin_hash
 
-    # 2. Crear usuario admin si no existe
     - name: Crear usuario admin si no existe
       community.mysql.mysql_query:
         login_user: root
@@ -25,7 +23,6 @@
           WHERE NOT EXISTS (SELECT 1 FROM Usuarios WHERE nombre_usuario='admin');
       when: admin_hash.stdout is defined
 
-    # 3. Actualizar contraseña del admin siempre
     - name: Actualizar contraseña del admin siempre
       community.mysql.mysql_query:
         login_user: root
@@ -37,7 +34,6 @@
           WHERE nombre_usuario='admin';
       when: admin_hash.stdout is defined
 
-    # 4. Mostrar hash generado
     - name: Verificar contraseña generada
       debug:
         msg: "El hash de la contraseña generado es: {{ admin_hash.stdout }}"

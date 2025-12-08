@@ -1,35 +1,52 @@
 </main>
 
 <footer class="text-center text-muted py-4">
-  <small>Clínica Estética — Panel de Gestión</small>
+    <small>Clínica Estética — Panel de Gestión</small>
 </footer>
+
+<!-- Fade Overlay para transición suave entre claro/oscuro -->
+<div id="fadeOverlay"></div>
+
+<!-- Botón flotante modo oscuro -->
+<button id="modoOscuroBtn" class="modo-oscuro-toggle btn btn-light rounded-circle shadow">
+    <i class="bi bi-moon-fill"></i>
+</button>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Script Modo Oscuro -->
+<!-- Script del modo oscuro -->
 <script>
-// Detectar botón
-const btnModo = document.getElementById("modoOscuroBtn");
+const btn = document.getElementById("modoOscuroBtn");
+const overlay = document.getElementById("fadeOverlay");
 const body = document.body;
 
 // Cargar modo guardado
-if (localStorage.getItem("modo-oscuro") === "1") {
+if (localStorage.getItem("darkmode") === "1") {
     body.classList.add("dark-mode");
-    btnModo.innerHTML = '<i class="bi bi-sun-fill"></i>'; // icono sol
+    btn.innerHTML = '<i class="bi bi-sun-fill"></i>';
 }
 
-// Alternar modo
-btnModo.addEventListener("click", () => {
-    body.classList.toggle("dark-mode");
+// Transición suave
+function animateThemeSwitch(callback) {
+    overlay.classList.add("active");
+    setTimeout(() => {
+        callback();
+        setTimeout(() => overlay.classList.remove("active"), 300);
+    }, 60);
+}
 
-    if (body.classList.contains("dark-mode")) {
-        localStorage.setItem("modo-oscuro", "1");
-        btnModo.innerHTML = '<i class="bi bi-sun-fill"></i>';
-    } else {
-        localStorage.setItem("modo-oscuro", "0");
-        btnModo.innerHTML = '<i class="bi bi-moon-fill"></i>';
-    }
+btn.addEventListener("click", () => {
+    animateThemeSwitch(() => {
+        body.classList.toggle("dark-mode");
+        if (body.classList.contains("dark-mode")) {
+            localStorage.setItem("darkmode", "1");
+            btn.innerHTML = '<i class="bi bi-sun-fill"></i>';
+        } else {
+            localStorage.setItem("darkmode", "0");
+            btn.innerHTML = '<i class="bi bi-moon-fill"></i>';
+        }
+    });
 });
 </script>
 

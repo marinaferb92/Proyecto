@@ -7,30 +7,98 @@ require_role(['admin','recepcionista']);
 
 $pageTitle = "Inventario";
 include 'header.php';
+
+$q = trim($_GET['q'] ?? '');
+
+$sql = "
+    SELECT i.*, p.nombre AS proveedor
+    FROM Inventario i
+    LEFT JOIN Proveedores p ON p.proveedor_id = i.proveedor_id
+    WHERE 1=1
+";
+
+$params = [];
+
+if ($q !== '') {
+    $sql .= " AND (i.nombre LIKE :q OR p.nombre LIKE :q)";
+    $params[':q'] = "%$q%";
+}
+
+$sql .= " ORDER BY i.nombre ASC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$items = $stmt->fetchAll();
 ?>
 
-<h3 class="mb-4"><i class="bi bi-box-seam me-2"></i> Inventario</h3>
-
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
-    <label class="form-label fw-bold">Buscar material o producto</label>
-
-    <div class="position-relative">
-      <input 
-        type="text" 
-        id="inventario-search" 
-        class="form-control form-control-lg live-search-input"
-        placeholder="Escribe para buscar..."
-        autocomplete="off"
-      >
-
-      <!-- Resultados -->
-      <div id="inventario-resultados" class="autocomplete-results"></div>
-    </div>
-  </div>
+<div class="d-flex justify-content-between mb-4">
+  <h3><i class="bi bi-box-seam me-2"></i>Inventario</h3>
+  <a href="inventario_editar.php" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> Nuevo ítem
+  </a>
 </div>
 
-<!-- Contenedor donde se cargará el listado dinámicamente -->
-<div id="inventario-lista"></div>
+<form class="card card-body shadow-sm mb-4" method="get">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <input name="q" value="<?= htmlspecialchars($q) ?>"
+             class="form-control"
+             placeholder="Buscar ítem o proveedor">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-primary w-100">
+        <i class="bi bi-search"></i> Buscar
+      </button>
+    </div>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+<table class="table table-hover mb-0">
+<thead class="table-light">
+<tr>
+    <th>Nombre</th>
+    <th>Tipo</th>
+    <th>Stock</th>
+    <th>Unidad</th>
+    <th>Proveedor</th>
+    <th class="text-end">Acciones</th>
+</tr>
+</thead>
+<tbody>
+
+<?php if ($items): ?>
+    <?php foreach ($items as $i): ?>
+        <tr>
+          <td><?= htmlspecialchars($i['nombre']) ?></td>
+          <td><?= htmlspecialchars($i['tipo']) ?></td>
+          <td>
+            <?= $i['stock_actual'] ?>
+            <?php if ($i['stock_actual'] < 10): ?>
+                <span class="badge bg-danger">Bajo</span>
+            <?php endif; ?>
+          </td>
+          <td><?= htmlspecialchars($i['unidad']) ?></td>
+          <td><?= htmlspecialchars($i['proveedor']) ?></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary"
+               href="inventario_editar.php?id=<?= $i['item_id'] ?>">
+               <i class="bi bi-pencil"></i>
+            </a>
+            <a class="btn btn-sm btn-outline-danger"
+               href="inventario_borrar.php?id=<?= $i['item_id'] ?>"
+               onclick="return confirm('¿Eliminar ítem del inventario?')">
+               <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+    <?php endforeach; ?>
+<?php else: ?>
+    <tr><td colspan="6" class="text-center py-4 text-muted">No hay ítems</td></tr>
+<?php endif; ?>
+
+</tbody>
+</table>
+</div>
 
 <?php include 'footer.php'; ?>

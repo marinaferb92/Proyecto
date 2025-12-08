@@ -13,63 +13,66 @@ include 'header.php';
 // ==================
 
 // Citas hoy
-$citasHoyStmt = $pdo->query("
-    SELECT COUNT(*) AS total 
+$citasHoy = $pdo->query("
+    SELECT COUNT(*) 
     FROM Citas 
-    WHERE fecha = CURDATE()
-");
-$citasHoy = (int)$citasHoyStmt->fetch()['total'];
+    WHERE fecha_cita = CURDATE()
+")->fetchColumn();
 
 // Citas realizadas hoy
-$realizadasStmt = $pdo->query("
-    SELECT COUNT(*) AS total
+$realizadasHoy = $pdo->query("
+    SELECT COUNT(*) 
     FROM Citas 
-    WHERE fecha = CURDATE()
+    WHERE fecha_cita = CURDATE()
       AND estado = 'realizada'
-");
-$realizadasHoy = (int)$realizadasStmt->fetch()['total'];
+")->fetchColumn();
 
 // Canceladas hoy
-$canceladasStmt = $pdo->query("
-    SELECT COUNT(*) AS total
+$canceladasHoy = $pdo->query("
+    SELECT COUNT(*) 
     FROM Citas 
-    WHERE fecha = CURDATE()
+    WHERE fecha_cita = CURDATE()
       AND estado = 'cancelada'
-");
-$canceladasHoy = (int)$canceladasStmt->fetch()['total'];
+")->fetchColumn();
+
+// Ingresos de hoy
+$ingresosHoy = $pdo->query("
+    SELECT SUM(p.monto)
+    FROM Pagos p
+    JOIN Citas c ON c.cita_id = p.cita_id
+    WHERE c.fecha_cita = CURDATE()
+")->fetchColumn() ?: 0;
 
 // Clientes nuevos este mes
-$clientesMesStmt = $pdo->query("
-    SELECT COUNT(*) AS total
+$clientesNuevosMes = $pdo->query("
+    SELECT COUNT(*)
     FROM Clientes
     WHERE YEAR(fecha_registro) = YEAR(CURDATE())
       AND MONTH(fecha_registro) = MONTH(CURDATE())
-");
-$clientesNuevosMes = (int)$clientesMesStmt->fetch()['total'];
+")->fetchColumn();
 
 // Stock crítico
-$stockCriticoStmt = $pdo->query("SELECT COUNT(*) AS total FROM vw_stock_critico");
-$stockCritico = (int)$stockCriticoStmt->fetch()['total'];
+$stockCritico = $pdo->query("
+    SELECT COUNT(*) FROM vw_stock_critico
+")->fetchColumn();
 
 // =======================
 // CITAS DEL DÍA
 // =======================
-$citasStmt = $pdo->query("
+$citasHoyStmt = $pdo->query("
     SELECT 
-        c.*, 
-        cli.nombre AS c_nombre, 
-        cli.apellido AS c_apellido,
-        emp.nombre AS e_nombre,
-        emp.apellido AS e_apellido,
+        c.*,
+        cli.nombre AS c_nombre, cli.apellido AS c_apellido,
+        emp.nombre AS e_nombre, emp.apellido AS e_apellido,
         t.nombre AS t_nombre
     FROM Citas c
-    LEFT JOIN Clientes cli ON cli.cliente_id = c.cliente_id
-    LEFT JOIN Empleados emp ON emp.empleado_id = c.empleado_id
+    LEFT JOIN Clientes   cli ON cli.cliente_id = c.cliente_id
+    LEFT JOIN Empleados  emp ON emp.empleado_id = c.empleado_id
     LEFT JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
-    WHERE c.fecha = CURDATE()
-    ORDER BY c.hora ASC
+    WHERE c.fecha_cita = CURDATE()
+    ORDER BY c.hora_cita ASC
 ");
-$citasHoyLista = $citasStmt->fetchAll();
+$citasHoyLista = $citasHoyStmt->fetchAll();
 ?>
 
 <h3 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Panel de Control</h3>
@@ -109,11 +112,11 @@ $citasHoyLista = $citasStmt->fetchAll();
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body d-flex justify-content-between">
         <div>
-          <div class="text-muted small">Canceladas</div>
-          <div class="h4 text-danger"><?= $canceladasHoy ?></div>
+          <div class="text-muted small">Ingresos Hoy</div>
+          <div class="h4"><?= number_format($ingresosHoy, 2) ?> €</div>
         </div>
-        <div class="text-danger p-3 bg-danger bg-opacity-10 rounded-circle">
-          <i class="bi bi-x-circle"></i>
+        <div class="text-warning p-3 bg-warning bg-opacity-10 rounded-circle">
+          <i class="bi bi-cash-coin"></i>
         </div>
       </div>
     </div>
@@ -170,7 +173,7 @@ $citasHoyLista = $citasStmt->fetchAll();
       <?php if ($citasHoyLista): ?>
         <?php foreach ($citasHoyLista as $c): ?>
         <tr>
-          <td><?= htmlspecialchars($c['hora']) ?></td>
+          <td><?= htmlspecialchars(substr($c['hora_cita'],0,5)) ?></td>
           <td><?= htmlspecialchars($c['c_nombre'].' '.$c['c_apellido']) ?></td>
           <td><?= htmlspecialchars($c['e_nombre'].' '.$c['e_apellido']) ?></td>
           <td><?= htmlspecialchars($c['t_nombre']) ?></td>
@@ -200,3 +203,4 @@ $citasHoyLista = $citasStmt->fetchAll();
 </div>
 
 <?php include 'footer.php'; ?>
+GIT 

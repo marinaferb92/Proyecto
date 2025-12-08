@@ -6,12 +6,17 @@ require_login();
 require_role(['admin','recepcionista']);
 
 $id = $_GET['id'] ?? null;
+
 if (!$id) {
-    die("ID inválido");
+    die("ID no proporcionado");
 }
 
 // Obtener datos del cliente
-$stmt = $pdo->prepare("SELECT * FROM Clientes WHERE cliente_id = ?");
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM Clientes
+    WHERE cliente_id = ?
+");
 $stmt->execute([$id]);
 $cliente = $stmt->fetch();
 
@@ -19,121 +24,53 @@ if (!$cliente) {
     die("Cliente no encontrado");
 }
 
-// Obtener citas del cliente
-$stmtCitas = $pdo->prepare("
-    SELECT c.*, t.nombre AS tratamiento
-    FROM Citas c
-    LEFT JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
-    WHERE c.cliente_id = ?
-    ORDER BY c.fecha DESC, c.hora DESC
-");
-$stmtCitas->execute([$id]);
-$citas = $stmtCitas->fetchAll();
-
-$pageTitle = "Cliente: " . htmlspecialchars($cliente['nombre'].' '.$cliente['apellido']);
+$pageTitle = "Ficha de " . htmlspecialchars($cliente['nombre']);
 include 'header.php';
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-person-bounding-box me-2"></i>Ficha del Cliente</h3>
+<h3 class="mb-4">
+    <i class="bi bi-person-vcard me-2"></i>Ficha del Cliente
+</h3>
 
-    <div>
-        <a href="cliente_editar.php?id=<?= $cliente['cliente_id'] ?>" class="btn btn-outline-primary me-2">
-            <i class="bi bi-pencil"></i> Editar
-        </a>
-
-        <?php if ($_SESSION['rol'] === 'admin'): ?>
-        <a href="cliente_borrar.php?id=<?= $cliente['cliente_id'] ?>" 
-           onclick="return confirm('¿Estás seguro de borrar este cliente?')"
-           class="btn btn-outline-danger">
-            <i class="bi bi-trash"></i> Borrar
-        </a>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- DATOS DEL CLIENTE -->
 <div class="card shadow-sm mb-4">
-  <div class="card-body">
-
-    <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Información personal</h5>
-
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <strong>Nombre:</strong><br>
-            <?= htmlspecialchars($cliente['nombre']) ?>
-        </div>
-        <div class="col-md-6 mb-3">
-            <strong>Apellido:</strong><br>
-            <?= htmlspecialchars($cliente['apellido']) ?>
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <strong>DNI:</strong><br>
-            <?= htmlspecialchars($cliente['dni']) ?>
-        </div>
-        <div class="col-md-4 mb-3">
-            <strong>Teléfono:</strong><br>
-            <?= htmlspecialchars($cliente['telefono']) ?>
-        </div>
-        <div class="col-md-4 mb-3">
-            <strong>Email:</strong><br>
-            <?= htmlspecialchars($cliente['email']) ?>
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <strong>Estado:</strong><br>
-            <?php if ($cliente['activo']): ?>
-                <span class="badge bg-success">Activo</span>
-            <?php else: ?>
-                <span class="badge bg-secondary">Inactivo</span>
-            <?php endif; ?>
-        </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- HISTORIAL DE CITAS -->
-<div class="card shadow-sm mb-5">
     <div class="card-body">
 
-        <h5 class="mb-3"><i class="bi bi-calendar2-check me-2"></i>Historial de citas</h5>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h5><?= htmlspecialchars($cliente['nombre'].' '.$cliente['apellido']) ?></h5>
+                <p class="text-muted m-0"><?= htmlspecialchars($cliente['dni'] ?: "Sin DNI") ?></p>
+            </div>
 
-        <?php if ($citas): ?>
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Hora</th>
-                    <th>Tratamiento</th>
-                    <th>Estado</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($citas as $c): ?>
-                <tr>
-                    <td><?= htmlspecialchars($c['fecha']) ?></td>
-                    <td><?= htmlspecialchars($c['hora']) ?></td>
-                    <td><?= htmlspecialchars($c['tratamiento']) ?></td>
-                    <td><?= htmlspecialchars($c['estado']) ?></td>
-                    <td class="text-end">
-                        <a href="cita_detalle.php?id=<?= $c['cita_id'] ?>" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="col-md-6 text-md-end">
+                <a href="cliente_editar.php?id=<?= $cliente['cliente_id'] ?>" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <a href="cliente_borrar.php?id=<?= $cliente['cliente_id'] ?>" 
+                   onclick="return confirm('¿Eliminar cliente DEFINITIVAMENTE?')"
+                   class="btn btn-danger">
+                   <i class="bi bi-trash"></i>
+                </a>
+            </div>
         </div>
 
-        <?php else: ?>
-            <p class="text-muted text-center mt-3">Este cliente todavía no tiene citas registradas.</p>
-        <?php endif; ?>
+        <hr>
 
+        <div class="row mb-3">
+            <div class="col-md-4"><strong>Teléfono:</strong> <?= htmlspecialchars($cliente['telefono']) ?></div>
+            <div class="col-md-4"><strong>Email:</strong> <?= htmlspecialchars($cliente['correo']) ?></div>
+            <div class="col-md-4"><strong>Fecha de registro:</strong> <?= htmlspecialchars($cliente['fecha_registro']) ?></div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4"><strong>Género:</strong> <?= htmlspecialchars($cliente['genero']) ?></div>
+            <div class="col-md-4"><strong>Edad:</strong> <?= htmlspecialchars($cliente['edad']) ?></div>
+            <div class="col-md-4"><strong>Origen:</strong> <?= htmlspecialchars($cliente['origen_cliente']) ?></div>
+        </div>
+
+        <div class="mb-3">
+            <strong>Dirección:</strong>  
+            <div class="text-muted"><?= nl2br(htmlspecialchars($cliente['direccion'])) ?></div>
+        </div>
     </div>
 </div>
 

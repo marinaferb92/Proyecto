@@ -5,110 +5,140 @@ require_once 'auth.php';
 require_login();
 require_role(['admin','recepcionista']);
 
-$id = $_GET['id'] ?? null;
+$editando = isset($_GET['id']);
+$pageTitle = $editando ? "Editar Cliente" : "Nuevo Cliente";
+
+include 'header.php';
+
 $cliente = [
     'nombre' => '',
     'apellido' => '',
     'dni' => '',
     'telefono' => '',
-    'email' => '',
-    'activo' => 1,
+    'correo' => '',
+    'direccion' => '',
+    'fecha_nacimiento' => '',
+    'genero' => 'Mujer'
 ];
 
-if ($id) {
+// Si estamos editando cargar datos
+if ($editando) {
     $stmt = $pdo->prepare("SELECT * FROM Clientes WHERE cliente_id = ?");
-    $stmt->execute([$id]);
+    $stmt->execute([$_GET['id']]);
     $cliente = $stmt->fetch();
 
     if (!$cliente) {
-        die("Cliente no encontrado");
+        echo "<div class='alert alert-danger'>Cliente no encontrado</div>";
+        include 'footer.php';
+        exit;
     }
 }
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+// Guardar
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $data = [
         $_POST['nombre'],
         $_POST['apellido'],
         $_POST['dni'],
         $_POST['telefono'],
-        $_POST['email'],
-        isset($_POST['activo']) ? 1 : 0
+        $_POST['correo'],
+        $_POST['direccion'],
+        $_POST['fecha_nacimiento'],
+        $_POST['genero'],
     ];
 
-    if ($id) {
-        // UPDATE
-        $data[] = $id;
-        $sql = "UPDATE Clientes 
-                SET nombre=?, apellido=?, dni=?, telefono=?, email=?, activo=? 
-                WHERE cliente_id=?";
-        $pdo->prepare($sql)->execute($data);
-    } else {
-        // INSERT
-        $sql = "INSERT INTO Clientes (nombre, apellido, dni, telefono, email, activo)
-                VALUES (?, ?, ?, ?, ?, ?)";
-        $pdo->prepare($sql)->execute($data);
+    try {
+        if ($editando) {
+            $sql = "UPDATE Clientes 
+                    SET nombre=?, apellido=?, dni=?, telefono=?, correo=?, direccion=?, fecha_nacimiento=?, genero=?
+                    WHERE cliente_id=?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([...$data, $_GET['id']]);
 
-        $id = $pdo->lastInsertId();
+        } else {
+            $sql = "INSERT INTO Clientes
+                    (nombre, apellido, dni, telefono, correo, direccion, fecha_nacimiento, genero, fecha_registro)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($data);
+        }
+
+        header("Location: clientes.php");
+        exit;
+
+    } catch (PDOException $e) {
+        $error = "Error: " . $e->getMessage();
     }
-
-    header("Location: cliente_detalle.php?id=" . $id);
-    exit;
 }
-
-$pageTitle = $id ? "Editar Cliente" : "Nuevo Cliente";
-include 'header.php';
 ?>
 
 <h3 class="mb-4">
-    <i class="bi bi-person-plus me-2"></i>
-    <?= $id ? "Editar Cliente" : "Nuevo Cliente" ?>
+    <i class="bi bi-person-lines-fill me-2"></i>
+    <?= $editando ? "Editar Cliente" : "Nuevo Cliente" ?>
 </h3>
 
-<form method="POST" class="card card-body shadow-sm">
+<?php if (!empty($error)): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
 
-  <div class="row mb-3">
+<form method="post" class="card p-4 shadow-sm">
+
+<div class="row g-3">
+
     <div class="col-md-6">
-      <label class="form-label">Nombre</label>
-      <input name="nombre" class="form-control" required
-             value="<?= htmlspecialchars($cliente['nombre']) ?>">
+        <label class="form-label">Nombre</label>
+        <input required name="nombre" class="form-control" value="<?= htmlspecialchars($cliente['nombre']) ?>">
     </div>
 
     <div class="col-md-6">
-      <label class="form-label">Apellido</label>
-      <input name="apellido" class="form-control" required
-             value="<?= htmlspecialchars($cliente['apellido']) ?>">
+        <label class="form-label">Apellido</label>
+        <input required name="apellido" class="form-control" value="<?= htmlspecialchars($cliente['apellido']) ?>">
     </div>
-  </div>
 
-  <div class="row mb-3">
     <div class="col-md-4">
-      <label class="form-label">DNI</label>
-      <input name="dni" class="form-control"
-             value="<?= htmlspecialchars($cliente['dni']) ?>">
+        <label class="form-label">DNI</label>
+        <input required name="dni" class="form-control" value="<?= htmlspecialchars($cliente['dni']) ?>">
     </div>
-    <div class="col-md-4">
-      <label class="form-label">Teléfono</label>
-      <input name="telefono" class="form-control"
-             value="<?= htmlspecialchars($cliente['telefono']) ?>">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Email</label>
-      <input name="email" type="email" class="form-control"
-             value="<?= htmlspecialchars($cliente['email']) ?>">
-    </div>
-  </div>
 
-  <label class="form-check mb-3">
-    <input type="checkbox" name="activo" class="form-check-input"
-           <?= $cliente['activo'] ? "checked" : "" ?>>
-    <span class="form-check-label">Activo</span>
-  </label>
+    <div class="col-md-4">
+        <label class="form-label">Teléfono</label>
+        <input name="telefono" class="form-control" value="<?= htmlspecialchars($cliente['telefono']) ?>">
+    </div>
 
-  <div class="text-end">
-    <a href="clientes.php" class="btn btn-outline-secondary">Cancelar</a>
+    <div class="col-md-4">
+        <label class="form-label">Correo</label>
+        <input name="correo" type="email" class="form-control" value="<?= htmlspecialchars($cliente['correo']) ?>">
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label">Dirección</label>
+        <input name="direccion" class="form-control" value="<?= htmlspecialchars($cliente['direccion']) ?>">
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Fecha nacimiento</label>
+        <input type="date" name="fecha_nacimiento" class="form-control"
+               value="<?= htmlspecialchars($cliente['fecha_nacimiento']) ?>">
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Género</label>
+        <select name="genero" class="form-select">
+            <option <?= $cliente['genero']=="Mujer" ? "selected":"" ?>>Mujer</option>
+            <option <?= $cliente['genero']=="Hombre" ? "selected":"" ?>>Hombre</option>
+            <option <?= $cliente['genero']=="Otro" ? "selected":"" ?>>Otro</option>
+        </select>
+    </div>
+
+</div>
+
+<div class="mt-4 text-end">
+    <a href="clientes.php" class="btn btn-secondary">Cancelar</a>
     <button class="btn btn-primary">Guardar</button>
-  </div>
+</div>
+
 </form>
 
 <?php include 'footer.php'; ?>

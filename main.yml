@@ -1,7 +1,6 @@
 ---
 # ==========================================================
 # MAIN PLAYBOOK — CLÍNICA ESTÉTICA
-# Orquestación completa del stack
 # ==========================================================
 
 - name: Cargar variables globales
@@ -20,7 +19,6 @@
 
 # ==========================================================
 # IMPORTACIÓN SQL COMPLETA
-# (solo backend1 maestro)
 # ==========================================================
 
 - import_playbook: playbooks/deploy_backend.yml

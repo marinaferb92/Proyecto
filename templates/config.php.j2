@@ -1,34 +1,42 @@
 <?php
 
-// Cargar el manejador de sesiones personalizado
 require_once __DIR__ . "/session_handler.php";
 
-// Datos de conexión (desde variables de Ansible)
+// Datos de conexión procedentes de Ansible
 $DB_HOST = "{{ ip.backend1 }}";
 $DB_NAME = "{{ db.name }}";
 $DB_USER = "{{ db.user }}";
 $DB_PASS = "{{ db.password }}";
 
-// Conexión PDO
+// Crear conexión PDO
 try {
     $pdo = new PDO(
         "mysql:host=$DB_HOST;dbname=$DB_NAME;charset=utf8mb4",
         $DB_USER,
         $DB_PASS,
         [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Modo estricto: errores visibles
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]
     );
 } catch (PDOException $e) {
-    die("Error de conexión a la base de datos: " . $e->getMessage());
+    die("Error de conexión a MySQL: " . $e->getMessage());
 }
 
-// Activar el handler de sesión MySQL
-$handler = new MySQLSessionHandler();
+// INICIALIZAR_HANDLER_CORRECTAMENTE
+// Pasamos host, db, user, pass al constructor
+$handler = new MySQLSessionHandler(
+    $DB_HOST,
+    $DB_NAME,
+    $DB_USER,
+    $DB_PASS
+);
+
+// Activar handler de sesión
 session_set_save_handler($handler, true);
 
-// Crear sesión si no existe
+// Arrancar sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+?>

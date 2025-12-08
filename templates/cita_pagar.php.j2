@@ -1,0 +1,103 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin','recepcionista']);
+
+$id = $_GET['id'] ?? null;
+if (!$id) die("Cita no válida");
+
+// Obtener datos de la cita
+$stmt = $pdo->prepare("
+    SELECT c.*, 
+           t.nombre AS t_nombre,
+           t.precio AS t_precio,
+           cli.nombre AS c_nombre,
+           cli.apellido AS c_apellido
+    FROM Citas c
+    JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
+    JOIN Clientes cli ON cli.cliente_id = c.cliente_id
+    WHERE c.cita_id = ?
+");
+$stmt->execute([$id]);
+$cita = $stmt->fetch();
+
+if (!$cita) die("Cita no encontrada");
+
+// ¿Ya tiene pago?
+$pagos = $pdo->prepare("SELECT * FROM Pagos WHERE cita_id = ?");
+$pagos->execute([$id]);
+$pagoExistente = $pagos->fetch();
+
+if ($pagoExistente) {
+    header("Location: cita_detalle.php?id=" . $id);
+    exit;
+}
+
+$pageTitle = "Registrar pago";
+include 'header.php';
+
+// Precio sugerido
+$importe_sugerido = $cita['t_precio'];
+?>
+
+<h3 class="mb-4"><i class="bi bi-cash-stack me-2"></i>Registrar Pago</h3>
+
+<div class="card shadow-sm p-4">
+
+    <h5>Cita #<?= $cita['cita_id'] ?></h5>
+    <p class="text-muted mb-4">
+        Cliente: <strong><?= htmlspecialchars($cita['c_nombre'] . " " . $cita['c_apellido']) ?></strong><br>
+        Tratamiento: <strong><?= htmlspecialchars($cita['t_nombre']) ?></strong>
+    </p>
+
+    <form method="post">
+
+        <div class="mb-3">
+            <label class="form-label">Importe (€)</label>
+            <input type="number" step="0.01" name="monto" class="form-control"
+                   value="<?= htmlspecialchars($importe_sugerido) ?>" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Método de pago</label>
+            <select name="metodo" class="form-select" required>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="bizum">Bizum</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="otro">Otro</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Descuento aplicado (€)</label>
+            <input type="number" step="0.01" name="descuento" class="form-control" value="0">
+        </div>
+
+        <button class="btn btn-success">
+            <i class="bi bi-check2-circle"></i> Guardar pago
+        </button>
+        <a href="cita_detalle.php?id=<?= $id ?>" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+
+</div>
+
+<?php
+// Procesar formulario
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    $importe = (float)$_POST['monto'] - (float)$_POST['descuento'];
+    if ($importe < 0) $importe = 0;
+
+    $sql = "INSERT INTO Pagos (cita_id, metodo_pago, monto) VALUES (?, ?, ?)";
+    $pdo->prepare($sql)->execute([$id, $_POST['metodo'], $importe]);
+
+    // Trigger cambiará la cita a "realizada"
+    header("Location: cita_detalle.php?id=" . $id);
+    exit;
+}
+?>
+
+<?php include 'footer.php'; ?>

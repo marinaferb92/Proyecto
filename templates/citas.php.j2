@@ -39,18 +39,18 @@ if ($q !== '') {
         OR emp.nombre LIKE :q
         OR emp.apellido LIKE :q
         OR t.nombre LIKE :q
-        OR c.notas LIKE :q
+        OR c.observaciones LIKE :q
     )";
     $params[':q'] = "%$q%";
 }
 
 if ($fecha_desde !== '') {
-    $sql .= " AND c.fecha >= :fdesde";
+    $sql .= " AND c.fecha_cita >= :fdesde";
     $params[':fdesde'] = $fecha_desde;
 }
 
 if ($fecha_hasta !== '') {
-    $sql .= " AND c.fecha <= :fhasta";
+    $sql .= " AND c.fecha_cita <= :fhasta";
     $params[':fhasta'] = $fecha_hasta;
 }
 
@@ -59,7 +59,7 @@ if ($estado !== '') {
     $params[':estado'] = $estado;
 }
 
-$sql .= " ORDER BY c.fecha DESC, c.hora DESC";
+$sql .= " ORDER BY c.fecha_cita DESC, c.hora_cita DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -145,8 +145,8 @@ $citas = $stmt->fetchAll();
             <?php if ($citas): ?>
                 <?php foreach ($citas as $c): ?>
                 <tr>
-                    <td><?= htmlspecialchars($c['fecha']) ?></td>
-                    <td><?= htmlspecialchars($c['hora']) ?></td>
+                    <td><?= htmlspecialchars($c['fecha_cita']) ?></td>
+                    <td><?= htmlspecialchars($c['hora_cita']) ?></td>
                     <td><?= htmlspecialchars($c['c_nombre'].' '.$c['c_apellido']) ?></td>
                     <td><?= htmlspecialchars($c['e_nombre'].' '.$c['e_apellido']) ?></td>
                     <td><?= htmlspecialchars($c['t_nombre']) ?></td>

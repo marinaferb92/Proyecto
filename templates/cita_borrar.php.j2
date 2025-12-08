@@ -6,6 +6,7 @@ require_login();
 require_role(['admin']);
 
 $id = $_GET['id'] ?? null;
+
 if (!$id) die("ID inválido");
 
 $stmt = $pdo->prepare("DELETE FROM Citas WHERE cita_id = ?");

@@ -8,7 +8,7 @@ require_role(['admin']); // Solo admin puede borrar
 $id = $_GET['id'] ?? null;
 
 if (!$id) {
-    die("ID inválido");
+    die("ID no válido");
 }
 
 $stmt = $pdo->prepare("DELETE FROM Clientes WHERE cliente_id = ?");

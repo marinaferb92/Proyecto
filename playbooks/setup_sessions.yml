@@ -8,9 +8,6 @@
 
   tasks:
 
-    #############################################################
-    # 1. Crear tabla php_sessions en backend1
-    #############################################################
     - name: Crear tabla php_sessions en backend maestro
       community.mysql.mysql_query:
         login_user: root
@@ -24,9 +21,6 @@
           ) ENGINE=InnoDB;
       when: inventory_hostname == "backend1"
 
-    #############################################################
-    # 2. Configurar php.ini en frontends
-    #############################################################
     - name: Configurar PHP session handler en frontends
       lineinfile:
         path: /etc/php/8.3/apache2/php.ini
@@ -41,28 +35,6 @@
         line: 'session.save_path = "tcp://{{ ip.backend1 }}:3306"'
       when: "'frontend' in group_names"
 
-
-    #############################################################
-    # 3. Insertar código PHP en config.php
-    #############################################################
-    - name: Insertar handler PHP en config.php (frontends)
-      blockinfile:
-        path: "{{ directories.www }}/config.php"
-        insertbefore: "require_once"
-        block: |
-          session_set_save_handler(
-              new MySQLSessionHandler(
-                  '{{ ip.backend1 }}',
-                  '{{ db.user }}',
-                  '{{ db.password }}',
-                  '{{ db.name }}'
-              )
-          );
-      when: "'frontend' in group_names"
-
-    #############################################################
-    # 4. Reiniciar Apache
-    #############################################################
     - name: Reiniciar Apache en frontends
       service:
         name: apache2

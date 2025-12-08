@@ -1,3 +1,4 @@
+---
 - name: Desplegar aplicación completa en Frontends
   hosts: frontend
   become: yes
@@ -14,22 +15,23 @@
     - name: Copiar todos los templates PHP automáticamente
       template:
         src: "{{ item }}"
-        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2','') }}"
+        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2', '') }}"
         owner: www-data
         group: www-data
         mode: '0644'
       with_fileglob:
         - "../templates/*.php.j2"
-      when: "'php.ini.j2' not in item and 'htaccess.j2' not in item"
 
     - name: Copiar archivos estáticos CSS/JS
       template:
         src: "{{ item }}"
-        dest: "{{ directories.app_dir }}/assets/{{ item | basename | regex_replace('.j2','') }}"
+        dest: "{{ directories.www }}/{{ item | basename | regex_replace('.j2','') }}"
+        owner: www-data
+        group: www-data
+        mode: '0644'
       with_fileglob:
         - "../templates/*.css.j2"
         - "../templates/*.js.j2"
-      ignore_errors: yes
 
     - name: Copiar .htaccess
       template:

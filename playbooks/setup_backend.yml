@@ -8,10 +8,6 @@
 
   tasks:
 
-    ##########################################################
-    # 1. INSTALACIÓN MYSQL
-    ##########################################################
-
     - name: Actualizar repositorios
       apt:
         update_cache: yes
@@ -30,10 +26,6 @@
       apt:
         name: php-cli
         state: present
-
-    ##########################################################
-    # 2. CONFIG ROOT
-    ##########################################################
 
     - name: Configurar root con password
       mysql_user:
@@ -55,10 +47,6 @@
           [client]
           user=root
           password={{ db.root_password }}
-
-    ##########################################################
-    # 3. CONFIGURAR BIND + BINLOG + SERVER ID
-    ##########################################################
 
     - name: Permitir conexiones externas
       lineinfile:
@@ -83,10 +71,6 @@
         name: mysql
         state: restarted
 
-    ##########################################################
-    # 4. USUARIO DE APLICACIÓN
-    ##########################################################
-
     - name: Crear usuario de la aplicación
       mysql_user:
         name: "{{ db.user }}"
@@ -100,10 +84,6 @@
         - "%"
         - "localhost"
 
-    ##########################################################
-    # 5. USUARIO DE REPLICACIÓN (ONLY backend1)
-    ##########################################################
-
     - name: Crear usuario de replicación (solo backend1)
       mysql_user:
         name: "{{ db.replication_user }}"
@@ -113,17 +93,12 @@
         state: present
       when: inventory_hostname == 'backend1'
 
-    ##########################################################
-    # 6. EXTRAER BINLOG + POS
-    ##########################################################
-
     - name: Obtener estado maestro
       shell: mysql -u root -p"{{ db.root_password }}" -e "SHOW MASTER STATUS\G"
       register: master_status
       changed_when: false
       when: inventory_hostname == "backend1"
 
-    # EXTRAER CORRECTAMENTE SIN LISTAS
     - name: Registrar archivo binlog (string)
       set_fact:
         binlog_file: "{{ master_status.stdout | regex_search('File: (.*)') | trim }}"
@@ -133,10 +108,6 @@
       set_fact:
         binlog_pos: "{{ master_status.stdout | regex_search('Position: (.*)') | trim | int }}"
       when: inventory_hostname == 'backend1'
-
-    ##########################################################
-    # 7. CONFIGURE REPLICA backend2
-    ##########################################################
 
     - name: Parar replicación si existe
       shell: mysql -u root -p"{{ db.root_password }}" -e "STOP REPLICA;"

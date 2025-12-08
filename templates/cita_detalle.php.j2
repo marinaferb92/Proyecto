@@ -3,86 +3,128 @@ require_once 'config.php';
 require_once 'auth.php';
 
 require_login();
-require_role(['admin','recepcionista']);
 
 $id = $_GET['id'] ?? null;
 if (!$id) die("ID inválido");
 
-$stmt = $pdo->prepare("
-    SELECT c.*, 
-           cli.nombre AS c_nombre, cli.apellido AS c_apellido,
-           emp.nombre AS e_nombre, emp.apellido AS e_apellido,
-           t.nombre AS t_nombre
+// ===============================
+// Obtener datos de la cita
+// ===============================
+$sql = "
+    SELECT 
+        c.*,
+        cli.nombre AS c_nombre,
+        cli.apellido AS c_apellido,
+        cli.telefono AS c_tel,
+        emp.nombre AS e_nombre,
+        emp.apellido AS e_apellido,
+        t.nombre AS t_nombre,
+        t.precio AS t_precio
     FROM Citas c
     LEFT JOIN Clientes cli ON cli.cliente_id = c.cliente_id
     LEFT JOIN Empleados emp ON emp.empleado_id = c.empleado_id
     LEFT JOIN Tratamientos t ON t.tratamiento_id = c.tratamiento_id
     WHERE c.cita_id = ?
-");
+";
+
+$stmt = $pdo->prepare($sql);
 $stmt->execute([$id]);
-$cita = $stmt->fetch();
+$c = $stmt->fetch();
 
-if (!$cita) die("Cita no encontrada");
+if (!$c) die("Cita no encontrada");
 
-$pageTitle = "Cita del " . $cita['fecha'];
+// ===============================
+// Consultar pago (si existe)
+// ===============================
+$pagoStmt = $pdo->prepare("SELECT * FROM Pagos WHERE cita_id = ?");
+$pagoStmt->execute([$id]);
+$pago = $pagoStmt->fetch();
+
+$pageTitle = "Detalle de Cita";
 include 'header.php';
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-calendar2-week me-2"></i>Detalles de la Cita</h3>
+<h3 class="mb-4">
+    <i class="bi bi-card-list me-2"></i> Detalle de Cita
+</h3>
 
-    <div>
-        <a href="cita_editar.php?id=<?= $id ?>" class="btn btn-outline-primary me-2">
+<div class="card shadow-sm p-4">
+
+    <h5 class="mb-3">Información general</h5>
+
+    <p><strong>Cliente:</strong> <?= htmlspecialchars($c['c_nombre'] . " " . $c['c_apellido']) ?></p>
+    <p><strong>Teléfono:</strong> <?= htmlspecialchars($c['c_tel']) ?></p>
+
+    <p><strong>Empleado:</strong> <?= htmlspecialchars($c['e_nombre'] . " " . $c['e_apellido']) ?></p>
+
+    <p><strong>Tratamiento:</strong> <?= htmlspecialchars($c['t_nombre']) ?>  
+       <span class="text-muted">(<?= number_format($c['t_precio'], 2) ?> €)</span></p>
+
+    <p><strong>Sala:</strong> <?= $c['sala_id'] ?: "(sin sala asignada)" ?></p>
+
+    <p><strong>Fecha:</strong> <?= htmlspecialchars($c['fecha_cita']) ?></p>
+    <p><strong>Hora:</strong> <?= htmlspecialchars(substr($c['hora_cita'], 0, 5)) ?></p>
+
+    <p><strong>Estado:</strong>
+        <?php if ($c['estado'] == 'pendiente'): ?>
+            <span class="badge bg-warning text-dark">Pendiente</span>
+        <?php elseif ($c['estado'] == 'realizada'): ?>
+            <span class="badge bg-success">Realizada</span>
+        <?php elseif ($c['estado'] == 'confirmada'): ?>
+            <span class="badge bg-info text-dark">Confirmada</span>
+        <?php else: ?>
+            <span class="badge bg-secondary">Cancelada</span>
+        <?php endif; ?>
+    </p>
+
+    <p><strong>Observaciones:</strong><br>
+        <?= nl2br(htmlspecialchars($c['observaciones'])) ?>
+    </p>
+
+    <hr>
+
+    <h5 class="mb-3">Pago</h5>
+
+    <?php if ($pago): ?>
+        <p><strong>Importe pagado:</strong> <?= number_format($pago['monto'], 2) ?> €</p>
+        <p><strong>Método:</strong> <?= htmlspecialchars($pago['metodo_pago']) ?></p>
+        <p><strong>Fecha pago:</strong> <?= $pago['fecha_pago'] ?></p>
+
+        <a href="recibo_cita.php?id=<?= $id ?>" 
+           class="btn btn-outline-secondary mt-2">
+           <i class="bi bi-file-earmark-pdf"></i> Descargar recibo PDF
+        </a>
+
+    <?php else: ?>
+        <div class="alert alert-info">
+            Esta cita <strong>aún no tiene un pago registrado</strong>.
+        </div>
+
+        <a href="cita_pagar.php?id=<?= $id ?>" class="btn btn-success btn-lg mb-3">
+            <i class="bi bi-cash-stack"></i> Registrar pago
+        </a>
+
+        <a href="cita_marcar_realizada.php?id=<?= $id ?>" 
+           class="btn btn-outline-primary"
+           onclick="return confirm('¿Marcar cita como realizada sin pago?')">
+            <i class="bi bi-check2-circle"></i> Marcar como realizada
+        </a>
+    <?php endif; ?>
+
+    <hr>
+
+    <div class="text-end mt-4">
+        <a href="cita_editar.php?id=<?= $id ?>" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Editar
         </a>
 
-        <?php if ($_SESSION['rol'] === 'admin'): ?>
-        <a href="cita_borrar.php?id=<?= $id ?>" 
-           onclick="return confirm('¿Seguro que quieres eliminar esta cita?')"
-           class="btn btn-outline-danger">
-           <i class="bi bi-trash"></i> Borrar
+        <a href="cita_borrar.php?id=<?= $id ?>"
+           class="btn btn-danger"
+           onclick="return confirm('¿Eliminar esta cita?')">
+           <i class="bi bi-trash"></i> Eliminar
         </a>
-        <?php endif; ?>
     </div>
+
 </div>
 
-<div class="card shadow-sm">
-  <div class="card-body">
-    
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <strong>Cliente:</strong><br>
-            <?= htmlspecialchars($cita['c_nombre'] . " " . $cita['c_apellido']) ?>
-        </div>
-        <div class="col-md-4">
-            <strong>Empleado:</strong><br>
-            <?= htmlspecialchars($cita['e_nombre'] . " " . $cita['e_apellido']) ?>
-        </div>
-        <div class="col-md-4">
-            <strong>Tratamiento:</strong><br>
-            <?= htmlspecialchars($cita['t_nombre']) ?>
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <strong>Fecha:</strong><br>
-            <?= htmlspecialchars($cita['fecha']) ?>
-        </div>
-        <div class="col-md-4">
-            <strong>Hora:</strong><br>
-            <?= htmlspecialchars($cita['hora']) ?>
-        </div>
-        <div class="col-md-4">
-            <strong>Estado:</strong><br>
-            <span class="badge bg-info"><?= htmlspecialchars($cita['estado']) ?></span>
-        </div>
-    </div>
-
-    <div class="mb-3">
-        <strong>Notas:</strong><br>
-        <?= nl2br(htmlspecialchars($cita['notas'])) ?>
-    </div>
-
-  </div>
-</
+<?php include 'footer.php'; ?>

@@ -1,0 +1,311 @@
+---
+- name: Poblar datos demo para toda la clínica
+  hosts: backend1
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Insertar categorías de empleados
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO CategoriasEmpleados (nombre, descripcion) VALUES
+          ('Médico Estético', 'Especialista en tratamientos faciales y corporales'),
+          ('Enfermería', 'Soporte clínico y asistencial'),
+          ('Recepción', 'Atención al cliente y administración'),
+          ('Marketing', 'Gestión de campañas y redes sociales'),
+          ('Dirección', 'Gestión de la clínica')
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar categorías de tratamientos
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO CategoriasTratamientos (nombre, descripcion) VALUES
+          ('Facial', 'Tratamientos faciales y rejuvenecimiento'),
+          ('Corporal', 'Tratamientos corporales y remodelación'),
+          ('Láser', 'Depilación y otros tratamientos láser'),
+          ('Anti-edad', 'Tratamientos orientados al envejecimiento'),
+          ('Bienestar', 'Masajes y tratamientos relajantes')
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar especialidades
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Especialidades (nombre, descripcion) VALUES
+          ('Medicina Estética', 'Tratamientos médicos no invasivos'),
+          ('Dermatología', 'Cuidado de la piel'),
+          ('Láser', 'Manejo de equipos láser'),
+          ('Nutrición', 'Planes nutricionales asociados a tratamientos'),
+          ('Fisioterapia', 'Tratamientos corporales y rehabilitación')
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar salas
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Salas (nombre, tipo, capacidad) VALUES
+          ('Sala 1 - Facial', 'Tratamiento', 1),
+          ('Sala 2 - Corporal', 'Tratamiento', 1),
+          ('Cabina Láser', 'Láser', 1),
+          ('Consulta Médica', 'Consulta', 2),
+          ('Sala Relax', 'Cabina', 1)
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar proveedores demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Proveedores (nombre, telefono, correo, direccion) VALUES
+          ('Dermacosmetics S.L.', '+34 911111111', 'contacto@dermacosmetics.es', 'Madrid'),
+          ('Estética Global', '+34 922222222', 'info@esteticaglobal.es', 'Barcelona'),
+          ('Láser ProTech', '+34 933333333', 'ventas@laserprotech.com', 'Valencia'),
+          ('BioSkin Pharma', '+34 944444444', 'soporte@bioskinpharma.es', 'Sevilla')
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar inventario demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Inventario (nombre, tipo, stock_actual, unidad, costo_unitario, proveedor_id)
+          SELECT * FROM (
+            SELECT 'Crema hidratante facial', 'insumo', 80, 'uds', 12.50, 1 UNION ALL
+            SELECT 'Ampollas vitamina C', 'insumo', 40, 'uds', 18.00, 1 UNION ALL
+            SELECT 'Relleno ácido hialurónico', 'producto', 25, 'viales', 95.00, 2 UNION ALL
+            SELECT 'Equip equipo láser depilación', 'equipamiento', 2, 'unidad', 8000.00, 3 UNION ALL
+            SELECT 'Guantes nitrilo', 'insumo', 300, 'caja', 5.50, 4 UNION ALL
+            SELECT 'Mascarilla facial colágeno', 'insumo', 60, 'uds', 8.90, 2 UNION ALL
+            SELECT 'Sérum anti-edad', 'producto', 35, 'uds', 35.00, 1 UNION ALL
+            SELECT 'Toallas desechables', 'insumo', 200, 'paquete', 10.00, 4
+          ) AS tmp;
+
+    - name: Insertar tratamientos demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Tratamientos (nombre, descripcion, precio, duracion_min, categoria_id, requiere_sala)
+          VALUES
+            ('Limpieza facial profunda', 'Limpieza y exfoliación con extracción de impurezas', 60.00, 60, 1, 1),
+            ('Peeling químico suave', 'Renovación superficial de la piel', 80.00, 45, 1, 1),
+            ('Masaje reductor', 'Tratamiento corporal para zonas localizadas', 70.00, 60, 2, 1),
+            ('Radiofrecuencia facial', 'Estimulación de colágeno y firmeza', 90.00, 50, 4, 1),
+            ('Depilación láser piernas completas', 'Láser de alta potencia', 150.00, 75, 3, 1),
+            ('Depilación láser axilas', 'Sesión rápida', 50.00, 30, 3, 1),
+            ('Tratamiento anti-edad premium', 'Protocolo combinado facial y cuello', 180.00, 90, 4, 1),
+            ('Masaje relajante aromático', 'Masaje de bienestar', 55.00, 50, 5, 1),
+            ('LPG corporal', 'Tratamiento remodelante', 95.00, 60, 2, 1),
+            ('Láser manchas faciales', 'Tratamiento específico para manchas', 130.00, 45, 3, 1)
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar empleados demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Empleados (nombre, apellido, fecha_ingreso, telefono, email, categoria_id, activo)
+          VALUES
+            ('María', 'García López', '2021-03-15', '+34 600111111', 'maria.garcia@clinica.com', 1, 1),
+            ('Laura', 'Fernández Ruiz', '2022-01-10', '+34 600222222', 'laura.fernandez@clinica.com', 1, 1),
+            ('Ana', 'Santos Pérez', '2020-09-01', '+34 600333333', 'ana.santos@clinica.com', 2, 1),
+            ('Carmen', 'Martín Díaz', '2019-05-20', '+34 600444444', 'carmen.martin@clinica.com', 3, 1),
+            ('Lucía', 'Navarro Gil', '2023-02-01', '+34 600555555', 'lucia.navarro@clinica.com', 4, 1),
+            ('Sofía', 'Romero Sáez', '2018-11-11', '+34 600666666', 'sofia.romero@clinica.com', 5, 1)
+          ON DUPLICATE KEY UPDATE email = VALUES(email);
+
+    - name: Vincular especialidades a empleados
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT IGNORE INTO EmpleadoEspecialidad (empleado_id, especialidad_id)
+          VALUES
+            (1,1),(1,2),
+            (2,1),(2,3),
+            (3,2),
+            (4,4),
+            (5,5),
+            (6,1);
+
+    - name: Insertar campañas de marketing demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO CampañasMarketing (nombre, canal, fecha_inicio, fecha_fin, presupuesto)
+          VALUES
+            ('Campaña verano facial', 'Instagram', '2024-06-01', '2024-08-31', 1500.00),
+            ('Promo láser otoño', 'Google Ads', '2024-09-01', '2024-11-30', 2000.00),
+            ('Fidelización clientes VIP', 'Email', '2024-01-10', '2024-12-31', 1000.00)
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar promociones / descuentos demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO DescuentosPromociones (nombre, tipo, valor, fecha_inicio, fecha_fin)
+          VALUES
+            ('-20% en limpiezas faciales', 'porcentaje', 20, '2024-01-01', '2024-06-30'),
+            ('Bono 5 masajes', 'cantidad_fija', 50, '2024-02-01', '2024-12-31'),
+            ('Láser piernas + axilas', 'cantidad_fija', 40, '2024-05-01', '2024-09-30')
+          ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+    - name: Insertar clientes aleatorios
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Clientes (dni, nombre, apellido, fecha_nacimiento, edad, genero,
+                                telefono, correo, direccion, fecha_registro, origen_cliente)
+          SELECT
+            CONCAT('DNI', LPAD(FLOOR(RAND()*90000000)+10000000, 8, '0')),
+            CONCAT('Nombre', FLOOR(RAND()*500)),
+            CONCAT('Apellido', FLOOR(RAND()*500)),
+            DATE_SUB(CURDATE(), INTERVAL FLOOR(RAND()*40+18) YEAR),
+            FLOOR(RAND()*40+18),
+            ELT(FLOOR(RAND()*3)+1,'Hombre','Mujer','Otro'),
+            CONCAT('+34 6', LPAD(FLOOR(RAND()*900000), 6, '0')),
+            CONCAT('cliente', FLOOR(RAND()*99999), '@mail.com'),
+            CONCAT('Calle ', FLOOR(RAND()*200), ' ', 'Madrid'),
+            DATE_SUB(CURDATE(), INTERVAL FLOOR(RAND()*365) DAY),
+            ELT(FLOOR(RAND()*5)+1,'Google','Instagram','Recomendacion','Web','Publicidad')
+          FROM dual
+          LIMIT 200;
+
+    - name: Insertar citas aleatorias
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Citas (cliente_id, empleado_id, tratamiento_id, sala_id,
+                             fecha_cita, hora_cita, estado, observaciones)
+          SELECT
+            FLOOR(RAND()*200)+1,       -- cliente
+            FLOOR(RAND()*6)+1,         -- empleado
+            FLOOR(RAND()*10)+1,        -- tratamiento
+            FLOOR(RAND()*5)+1,         -- sala
+            DATE_SUB(CURDATE(), INTERVAL FLOOR(RAND()*120) DAY),
+            TIME(CONCAT(LPAD(FLOOR(RAND()*8+9),2,'0'), ':', IF(RAND()>0.5,'00','30'), ':00')),
+            ELT(FLOOR(RAND()*5)+1,'pendiente','confirmada','realizada','cancelada','reprogramada'),
+            'Cita generada automáticamente'
+          FROM dual
+          LIMIT 300;
+
+    - name: Insertar pagos para parte de las citas
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Pagos (cita_id, metodo_pago, monto, fecha_pago)
+          SELECT
+            c.cita_id,
+            ELT(FLOOR(RAND()*4)+1,'efectivo','tarjeta','transferencia','bizum'),
+            ROUND((SELECT precio FROM Tratamientos t WHERE t.tratamiento_id = c.tratamiento_id)
+                  * (1 + (RAND()-0.5)/10),2),
+            CONCAT(c.fecha_cita, ' ', TIME(CONCAT(LPAD(FLOOR(RAND()*8+9),2,'0'), ':', IF(RAND()>0.5,'00','30'), ':00')))
+          FROM Citas c
+          WHERE c.estado IN ('confirmada','realizada')
+          AND NOT EXISTS (SELECT 1 FROM Pagos p WHERE p.cita_id = c.cita_id)
+          LIMIT 200;
+
+    - name: Insertar valoraciones para algunas citas realizadas
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO Valoraciones (cita_id, puntuacion, comentario)
+          SELECT
+            c.cita_id,
+            FLOOR(RAND()*3)+3,
+            'Valoración generada automáticamente'
+          FROM Citas c
+          WHERE c.estado = 'realizada'
+          AND NOT EXISTS (SELECT 1 FROM Valoraciones v WHERE v.cita_id = c.cita_id)
+          LIMIT 80;
+
+    - name: Insertar consumo de material en citas
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO ConsumoMaterial (cita_id, item_id, cantidad_usada)
+          SELECT
+            c.cita_id,
+            FLOOR(RAND()*8)+1,       -- item inventario
+            FLOOR(RAND()*3)+1
+          FROM Citas c
+          WHERE c.estado = 'realizada'
+          AND NOT EXISTS (SELECT 1 FROM ConsumoMaterial cm WHERE cm.cita_id = c.cita_id)
+          LIMIT 100;
+
+    - name: Insertar movimientos de inventario demo
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT INTO MovimientosInventario (item_id, tipo, cantidad, descripcion)
+          SELECT
+            FLOOR(RAND()*8)+1,
+            ELT(FLOOR(RAND()*3)+1,'entrada','salida','ajuste'),
+            FLOOR(RAND()*10)+1,
+            'Movimiento generado automáticamente'
+          FROM dual
+          LIMIT 100;
+
+    - name: Insertar promociones aplicadas a citas (CitaPromocion)
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          INSERT IGNORE INTO CitaPromocion (cita_id, promo_id)
+          SELECT
+            c.cita_id,
+            FLOOR(RAND()*3)+1
+          FROM Citas c
+          WHERE c.estado IN ('confirmada','realizada')
+          LIMIT 60;
+
+    - name: Recalcular estadísticas de los últimos 30 días
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ db.root_password }}"
+        login_db: "{{ db.name }}"
+        query: |
+          SET @i = 0;
+          WHILE @i < 30 DO
+            CALL sp_calcular_estadisticas_dia(CURDATE() - INTERVAL @i DAY);
+            SET @i = @i + 1;
+          END WHILE;
+
+    - name: Mensaje final
+      debug:
+        msg: "Base de datos poblada con datos demo para todas las estadísticas."

@@ -1,181 +1,113 @@
 <?php
-// tratamiento_editar.php
 require_once 'config.php';
 require_once 'auth.php';
 
 require_login();
-require_role(['admin']); // solo admin debería tocar tratamientos
+require_role(['admin']);
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$esEdicion = $id > 0;
+$id = $_GET['id'] ?? null;
 
-$pageTitle = $esEdicion ? "Editar tratamiento" : "Nuevo tratamiento";
-include 'header.php';
-
-$tratamiento = [
-    'nombre' => '',
-    'descripcion' => '',
-    'precio' => 0,
-    'duracion_min' => 60,
-    'categoria_id' => null,
-    'requiere_sala' => 1
+$trat = [
+  'nombre' => '',
+  'descripcion' => '',
+  'precio' => '',
+  'duracion_min' => '',
+  'categoria_id' => null,
+  'requiere_sala' => 1
 ];
 
-if ($esEdicion) {
-    $stmt = $pdo->prepare("SELECT * FROM Tratamientos WHERE tratamiento_id = :id");
-    $stmt->execute([':id' => $id]);
-    $tratamiento = $stmt->fetch();
-    if (!$tratamiento) {
-        echo "<div class='alert alert-danger mt-3'>Tratamiento no encontrado.</div>";
-        include 'footer.php';
-        exit;
-    }
+if ($id) {
+    $stmt = $pdo->prepare("SELECT * FROM Tratamientos WHERE tratamiento_id = ?");
+    $stmt->execute([$id]);
+    $trat = $stmt->fetch();
+
+    if (!$trat) die("Tratamiento no encontrado");
 }
 
-$categorias = $pdo->query("SELECT categoria_id, nombre FROM CategoriasTratamientos ORDER BY nombre")->fetchAll();
+$cats = $pdo->query("SELECT categoria_id, nombre FROM CategoriasTratamientos ORDER BY nombre")->fetchAll();
 
-$errores = [];
-$ok = '';
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $tratamiento['nombre'] = trim($_POST['nombre'] ?? '');
-    $tratamiento['descripcion'] = trim($_POST['descripcion'] ?? '');
-    $tratamiento['precio'] = (float)($_POST['precio'] ?? 0);
-    $tratamiento['duracion_min'] = (int)($_POST['duracion_min'] ?? 0);
-    $tratamiento['categoria_id'] = $_POST['categoria_id'] !== '' ? (int)$_POST['categoria_id'] : null;
-    $tratamiento['requiere_sala'] = isset($_POST['requiere_sala']) ? 1 : 0;
+    $data = [
+        $_POST['nombre'],
+        $_POST['descripcion'],
+        $_POST['precio'],
+        $_POST['duracion_min'],
+        $_POST['categoria_id'] ?: null,
+        isset($_POST['requiere_sala']) ? 1 : 0
+    ];
 
-    if ($tratamiento['nombre'] === '') {
-        $errores[] = "El nombre es obligatorio.";
-    }
-    if ($tratamiento['precio'] <= 0) {
-        $errores[] = "El precio debe ser mayor que 0.";
-    }
-    if ($tratamiento['duracion_min'] <= 0) {
-        $errores[] = "La duración debe ser mayor que 0 minutos.";
+    if ($id) {
+        $data[] = $id;
+        $sql = "UPDATE Tratamientos
+                SET nombre=?, descripcion=?, precio=?, duracion_min=?, categoria_id=?, requiere_sala=?
+                WHERE tratamiento_id=?";
+        $pdo->prepare($sql)->execute($data);
+    } else {
+        $sql = "INSERT INTO Tratamientos 
+                (nombre, descripcion, precio, duracion_min, categoria_id, requiere_sala)
+                VALUES (?, ?, ?, ?, ?, ?)";
+        $pdo->prepare($sql)->execute($data);
     }
 
-    if (empty($errores)) {
-        if ($esEdicion) {
-            $sql = "UPDATE Tratamientos
-                    SET nombre = :nom,
-                        descripcion = :desc,
-                        precio = :pre,
-                        duracion_min = :dur,
-                        categoria_id = :cat,
-                        requiere_sala = :req
-                    WHERE tratamiento_id = :id";
-            $pdo->prepare($sql)->execute([
-                ':nom' => $tratamiento['nombre'],
-                ':desc' => $tratamiento['descripcion'],
-                ':pre' => $tratamiento['precio'],
-                ':dur' => $tratamiento['duracion_min'],
-                ':cat' => $tratamiento['categoria_id'],
-                ':req' => $tratamiento['requiere_sala'],
-                ':id'  => $id
-            ]);
-            $ok = "Tratamiento actualizado correctamente.";
-        } else {
-            $sql = "INSERT INTO Tratamientos
-                        (nombre, descripcion, precio, duracion_min, categoria_id, requiere_sala)
-                    VALUES
-                        (:nom, :desc, :pre, :dur, :cat, :req)";
-            $pdo->prepare($sql)->execute([
-                ':nom' => $tratamiento['nombre'],
-                ':desc' => $tratamiento['descripcion'],
-                ':pre' => $tratamiento['precio'],
-                ':dur' => $tratamiento['duracion_min'],
-                ':cat' => $tratamiento['categoria_id'],
-                ':req' => $tratamiento['requiere_sala']
-            ]);
-            header("Location: tratamientos.php?msg=" . urlencode("Tratamiento creado correctamente."));
-            exit;
-        }
-    }
+    header("Location: tratamientos.php");
+    exit;
 }
+
+$pageTitle = $id ? "Editar Tratamiento" : "Nuevo Tratamiento";
+include 'header.php';
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">
-    <i class="bi bi-heart-pulse me-2"></i>
-    <?= $esEdicion ? 'Editar tratamiento' : 'Nuevo tratamiento' ?>
-  </h3>
-  <a href="tratamientos.php" class="btn btn-outline-secondary">
-    <i class="bi bi-arrow-left"></i> Volver
-  </a>
-</div>
+<h3 class="mb-4"><i class="bi bi-heart me-2"></i><?= $pageTitle ?></h3>
 
-<?php if ($errores): ?>
-  <div class="alert alert-danger">
-    <ul class="mb-0">
-      <?php foreach ($errores as $e): ?>
-        <li><?= htmlspecialchars($e) ?></li>
-      <?php endforeach; ?>
-    </ul>
+<form method="POST" class="card card-body shadow-sm">
+
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input name="nombre" class="form-control" required value="<?= htmlspecialchars($trat['nombre']) ?>">
   </div>
-<?php endif; ?>
 
-<?php if ($ok): ?>
-  <div class="alert alert-success"><?= htmlspecialchars($ok) ?></div>
-<?php endif; ?>
-
-<div class="card shadow-sm">
-  <div class="card-body">
-    <form method="post" class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label">Nombre *</label>
-        <input type="text" name="nombre" class="form-control" required
-               value="<?= htmlspecialchars($tratamiento['nombre']) ?>">
-      </div>
-
-      <div class="col-md-3">
-        <label class="form-label">Precio (€) *</label>
-        <input type="number" name="precio" step="0.01" min="0"
-               class="form-control"
-               value="<?= htmlspecialchars($tratamiento['precio']) ?>">
-      </div>
-
-      <div class="col-md-3">
-        <label class="form-label">Duración (min) *</label>
-        <input type="number" name="duracion_min" min="1" class="form-control"
-               value="<?= htmlspecialchars($tratamiento['duracion_min']) ?>">
-      </div>
-
-      <div class="col-md-4">
-        <label class="form-label">Categoría</label>
-        <select name="categoria_id" class="form-select">
-          <option value="">Sin categoría</option>
-          <?php foreach ($categorias as $c): ?>
-            <option value="<?= $c['categoria_id'] ?>"
-              <?= (int)$tratamiento['categoria_id'] === (int)$c['categoria_id'] ? 'selected' : '' ?>>
-              <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-
-      <div class="col-md-8">
-        <label class="form-label">Descripción</label>
-        <textarea name="descripcion" rows="3" class="form-control"><?= htmlspecialchars($tratamiento['descripcion']) ?></textarea>
-      </div>
-
-      <div class="col-12">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="requiere_sala" id="requiereSala"
-                 <?= $tratamiento['requiere_sala'] ? 'checked' : '' ?>>
-          <label class="form-check-label" for="requiereSala">
-            Requiere sala específica
-          </label>
-        </div>
-      </div>
-
-      <div class="col-12 text-end">
-        <button type="submit" class="btn btn-primary">
-          <i class="bi bi-save me-1"></i> Guardar
-        </button>
-      </div>
-    </form>
+  <div class="mb-3">
+    <label class="form-label">Descripción</label>
+    <textarea name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($trat['descripcion']) ?></textarea>
   </div>
-</div>
+
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label class="form-label">Precio (€)</label>
+      <input name="precio" type="number" step="0.01" class="form-control"
+             value="<?= htmlspecialchars($trat['precio']) ?>" required>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Duración (min)</label>
+      <input name="duracion_min" type="number" class="form-control"
+             value="<?= htmlspecialchars($trat['duracion_min']) ?>" required>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Categoría</label>
+      <select name="categoria_id" class="form-select">
+        <option value="">Sin categoría</option>
+        <?php foreach ($cats as $c): ?>
+          <option value="<?= $c['categoria_id'] ?>" <?= $trat['categoria_id']==$c['categoria_id']??''?'selected':'' ?>>
+            <?= htmlspecialchars($c['nombre']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+  </div>
+
+  <label class="form-check mb-3">
+    <input type="checkbox" name="requiere_sala" class="form-check-input" <?= $trat['requiere_sala'] ? "checked" : "" ?>>
+    <span class="form-check-label">Requiere sala</span>
+  </label>
+
+  <div class="text-end">
+    <a href="tratamientos.php" class="btn btn-outline-secondary">Cancelar</a>
+    <button class="btn btn-primary">Guardar</button>
+  </div>
+
+</form>
 
 <?php include 'footer.php'; ?>

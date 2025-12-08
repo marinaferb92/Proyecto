@@ -5,110 +5,104 @@ require_once 'auth.php';
 require_login();
 require_role(['admin']);
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$editando = $id > 0;
-
-$pageTitle = $editando ? "Editar empleado" : "Nuevo empleado";
-include 'header.php';
+$id = $_GET['id'] ?? null;
 
 $empleado = [
-    'nombre' => '',
-    'apellido' => '',
-    'telefono' => '',
-    'email' => '',
-    'categoria_id' => null,
-    'activo' => 1
+  'nombre' => '',
+  'apellido' => '',
+  'telefono' => '',
+  'email' => '',
+  'categoria_id' => null,
+  'activo' => 1
 ];
 
-if ($editando) {
-    $stmt = $pdo->prepare("SELECT * FROM Empleados WHERE empleado_id=:id");
-    $stmt->execute([':id'=>$id]);
+if ($id) {
+    $stmt = $pdo->prepare("SELECT * FROM Empleados WHERE empleado_id = ?");
+    $stmt->execute([$id]);
     $empleado = $stmt->fetch();
+
+    if (!$empleado) die("Empleado no encontrado");
 }
 
-$catStmt = $pdo->query("SELECT * FROM CategoriasEmpleados ORDER BY nombre");
-$categorias = $catStmt->fetchAll();
+$cats = $pdo->query("SELECT categoria_id, nombre FROM CategoriasEmpleados ORDER BY nombre")->fetchAll();
 
-$errores = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $empleado['nombre'] = trim($_POST['nombre']);
-    $empleado['apellido'] = trim($_POST['apellido']);
-    $empleado['telefono'] = trim($_POST['telefono']);
-    $empleado['email'] = trim($_POST['email']);
-    $empleado['categoria_id'] = $_POST['categoria_id'] ?: null;
-    $empleado['activo'] = isset($_POST['activo']) ? 1 : 0;
+    $data = [
+        $_POST['nombre'],
+        $_POST['apellido'],
+        $_POST['telefono'],
+        $_POST['email'],
+        $_POST['categoria_id'] ?: null,
+        isset($_POST['activo']) ? 1 : 0
+    ];
 
-    if ($empleado['nombre'] === '') $errores[] = "Nombre obligatorio";
-
-    if (!$errores) {
-        if ($editando) {
-            $sql = "UPDATE Empleados SET 
-                    nombre=:n, apellido=:a, telefono=:t, email=:e, 
-                    categoria_id=:c, activo=:ac
-                    WHERE empleado_id=:id";
-
-            $pdo->prepare($sql)->execute([
-                ':n'=>$empleado['nombre'], ':a'=>$empleado['apellido'],
-                ':t'=>$empleado['telefono'], ':e'=>$empleado['email'],
-                ':c'=>$empleado['categoria_id'], ':ac'=>$empleado['activo'],
-                ':id'=>$id
-            ]);
-        } else {
-            $sql = "INSERT INTO Empleados (nombre, apellido, telefono, email, categoria_id, activo)
-                    VALUES (:n,:a,:t,:e,:c,:ac)";
-
-            $pdo->prepare($sql)->execute([
-                ':n'=>$empleado['nombre'], ':a'=>$empleado['apellido'],
-                ':t'=>$empleado['telefono'], ':e'=>$empleado['email'],
-                ':c'=>$empleado['categoria_id'], ':ac'=>$empleado['activo']
-            ]);
-        }
-
-        header("Location: empleados.php?msg=ok");
-        exit;
+    if ($id) {
+        $data[] = $id;
+        $sql = "UPDATE Empleados SET nombre=?, apellido=?, telefono=?, email=?, categoria_id=?, activo=? WHERE empleado_id=?";
+        $pdo->prepare($sql)->execute($data);
+    } else {
+        $sql = "INSERT INTO Empleados (nombre, apellido, telefono, email, categoria_id, activo)
+                VALUES (?, ?, ?, ?, ?, ?)";
+        $pdo->prepare($sql)->execute($data);
     }
+
+    header("Location: empleados.php");
+    exit;
 }
+
+$pageTitle = $id ? "Editar Empleado" : "Nuevo Empleado";
+include 'header.php';
 ?>
 
-<h3><?=$pageTitle?></h3>
+<h3 class="mb-4"><i class="bi bi-person-badge me-2"></i><?= $pageTitle ?></h3>
 
-<?php if($errores): ?>
-<div class="alert alert-danger"><?php foreach($errores as $e) echo "<div>$e</div>"; ?></div>
-<?php endif; ?>
+<form method="POST" class="card card-body shadow-sm">
 
-<form method="post" class="card card-body shadow-sm">
-    <label class="form-label">Nombre *</label>
-    <input name="nombre" class="form-control" value="<?=$empleado['nombre']?>" required>
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <label class="form-label">Nombre</label>
+      <input name="nombre" class="form-control" required value="<?= htmlspecialchars($empleado['nombre']) ?>">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Apellido</label>
+      <input name="apellido" class="form-control" required value="<?= htmlspecialchars($empleado['apellido']) ?>">
+    </div>
+  </div>
 
-    <label class="form-label mt-2">Apellido</label>
-    <input name="apellido" class="form-control" value="<?=$empleado['apellido']?>">
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label class="form-label">Teléfono</label>
+      <input name="telefono" class="form-control" value="<?= htmlspecialchars($empleado['telefono']) ?>">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Email</label>
+      <input name="email" class="form-control" value="<?= htmlspecialchars($empleado['email']) ?>">
+    </div>
 
-    <label class="form-label mt-2">Teléfono</label>
-    <input name="telefono" class="form-control" value="<?=$empleado['telefono']?>">
-
-    <label class="form-label mt-2">Email</label>
-    <input name="email" class="form-control" value="<?=$empleado['email']?>">
-
-    <label class="form-label mt-2">Categoría</label>
-    <select name="categoria_id" class="form-select">
-        <option value="">(Sin categoría)</option>
-        <?php foreach($categorias as $c): ?>
-            <option value="<?=$c['categoria_id']?>" 
-                <?=$empleado['categoria_id']==$c['categoria_id']?'selected':''?>>
-                <?=$c['nombre']?>
-            </option>
+    <div class="col-md-4">
+      <label class="form-label">Categoría</label>
+      <select name="categoria_id" class="form-select">
+        <option value="">Sin categoría</option>
+        <?php foreach ($cats as $c): ?>
+          <option value="<?= $c['categoria_id'] ?>" <?= $empleado['categoria_id']==$c['categoria_id']?'selected':'' ?>>
+            <?= htmlspecialchars($c['nombre']) ?>
+          </option>
         <?php endforeach; ?>
-    </select>
-
-    <div class="form-check mt-3">
-        <input type="checkbox" class="form-check-input" name="activo" <?=$empleado['activo']?'checked':''?>>
-        <label class="form-check-label">Activo</label>
+      </select>
     </div>
+  </div>
 
-    <div class="text-end mt-3">
-        <button class="btn btn-primary">Guardar</button>
-    </div>
+  <label class="form-check mb-3">
+    <input type="checkbox" name="activo" class="form-check-input" <?= $empleado['activo'] ? "checked" : "" ?>>
+    <span class="form-check-label">Activo</span>
+  </label>
+
+  <div class="text-end">
+    <a href="empleados.php" class="btn btn-outline-secondary">Cancelar</a>
+    <button class="btn btn-primary">Guardar</button>
+  </div>
+
 </form>
 
 <?php include 'footer.php'; ?>

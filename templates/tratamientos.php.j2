@@ -3,81 +3,92 @@ require_once 'config.php';
 require_once 'auth.php';
 
 require_login();
-require_role(['admin','recepcionista','medico']);
+require_role(['admin','recepcionista']);
 
 $pageTitle = "Tratamientos";
 include 'header.php';
 
-$cat = $_GET['cat'] ?? '';
+$q = trim($_GET['q'] ?? '');
 
-$categorias = $pdo->query("SELECT * FROM CategoriasTratamientos ORDER BY nombre")->fetchAll();
-
-$sql = "SELECT t.*, c.nombre AS categoria
-        FROM Tratamientos t
-        LEFT JOIN CategoriasTratamientos c ON c.categoria_id=t.categoria_id
-        WHERE 1=1";
+$sql = "
+    SELECT t.*, c.nombre AS categoria
+    FROM Tratamientos t
+    LEFT JOIN CategoriasTratamientos c ON c.categoria_id = t.categoria_id
+    WHERE 1=1
+";
 
 $params = [];
 
-if ($cat !== '') {
-    $sql .= " AND t.categoria_id = :c";
-    $params[':c'] = $cat;
+if ($q !== '') {
+    $sql .= " AND (t.nombre LIKE :q OR c.nombre LIKE :q)";
+    $params[':q'] = "%$q%";
 }
 
 $sql .= " ORDER BY t.nombre ASC";
-
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$tratamientos = $stmt->fetchAll();
+$treatments = $stmt->fetchAll();
 ?>
 
-<div class="d-flex justify-content-between mb-3">
-    <h3><i class="bi bi-heart-pulse"></i> Tratamientos</h3>
-    <a href="tratamiento_editar.php" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Nuevo tratamiento
-    </a>
+<div class="d-flex justify-content-between mb-4">
+  <h3><i class="bi bi-heart-pulse me-2"></i>Tratamientos</h3>
+  <a href="tratamiento_editar.php" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nuevo tratamiento</a>
 </div>
 
-<form class="card card-body shadow-sm mb-3" method="get">
-    <div class="row g-2">
-        <div class="col-md-6">
-            <select name="cat" class="form-select">
-                <option value="">(Todas las categorías)</option>
-                <?php foreach($categorias as $c): ?>
-                <option value="<?=$c['categoria_id']?>" <?=$cat==$c['categoria_id']?'selected':''?>>
-                    <?=$c['nombre']?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button class="btn btn-outline-primary w-100">Filtrar</button>
-        </div>
+<form class="card card-body shadow-sm mb-4" method="get">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <input name="q"
+             value="<?= htmlspecialchars($q) ?>"
+             class="form-control"
+             placeholder="Buscar tratamiento o categoría">
     </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> Buscar</button>
+    </div>
+  </div>
 </form>
 
 <div class="card shadow-sm">
-<table class="table table-hover">
-<thead><tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Duración</th><th class="text-end">Acciones</th></tr></thead>
-<tbody>
+  <table class="table table-hover mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Nombre</th>
+        <th>Categoría</th>
+        <th>Precio</th>
+        <th>Duración</th>
+        <th>Requiere sala</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    </thead>
 
-<?php foreach($tratamientos as $t): ?>
-<tr>
-    <td><?=$t['nombre']?></td>
-    <td><?=$t['categoria']?></td>
-    <td><?=$t['precio']?> €</td>
-    <td><?=$t['duracion_min']?> min</td>
-    <td class="text-end">
-        <a class="btn btn-sm btn-outline-primary" href="tratamiento_editar.php?id=<?=$t['tratamiento_id']?>"><i class="bi bi-pencil"></i></a>
-        <a class="btn btn-sm btn-outline-danger"
-           onclick="return confirm('¿Eliminar tratamiento?')"
-           href="tratamiento_borrar.php?id=<?=$t['tratamiento_id']?>"><i class="bi bi-trash"></i></a>
-    </td>
-</tr>
-<?php endforeach; ?>
+    <tbody>
+    <?php if ($treatments): ?>
+      <?php foreach ($treatments as $t): ?>
+        <tr>
+          <td><?= htmlspecialchars($t['nombre']) ?></td>
+          <td><?= htmlspecialchars($t['categoria']) ?></td>
+          <td><?= number_format($t['precio'],2) ?> €</td>
+          <td><?= $t['duracion_min'] ?> min</td>
+          <td><?= $t['requiere_sala'] ? "Sí" : "No" ?></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="tratamiento_editar.php?id=<?= $t['tratamiento_id'] ?>">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a class="btn btn-sm btn-outline-danger"
+               href="tratamiento_borrar.php?id=<?= $t['tratamiento_id'] ?>"
+               onclick="return confirm('¿Eliminar tratamiento?')">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+    <?php else: ?>
+      <tr><td colspan="6" class="text-center py-4 text-muted">No hay tratamientos</td></tr>
+    <?php endif; ?>
+    </tbody>
 
-</tbody>
-</table>
+  </table>
 </div>
 
 <?php include 'footer.php'; ?>

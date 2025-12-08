@@ -1,179 +1,163 @@
 /* ================================
-   GENERAL
-   ================================ */
+   PALETA PASTEL SUAVE — CLÍNICA ESTÉTICA
+================================ */
 
-body {
-    background-color: #fdf7fa; /* crema rosado suave */
-    font-family: 'Inter', sans-serif;
-    color: #444;
-}
+:root {
+    --rosa-suave: #f7b2c4;
+    --rosa-clarito: #fdd6e2;
+    --rosa-medio: #e59bbd;
+    --rosa-medio-hover: #d889ac;
+    --rosa-borde: #f4c8d7;
 
-/* Enlaces más suaves */
-a {
-    color: #e91e63;
-}
-a:hover {
-    color: #d81b60;
+    --texto-oscuro: #4a4445;
+    --fondo-claro: #fdf8fa;
+
+    --card-shadow: rgba(0, 0, 0, 0.06);
 }
 
 /* ================================
-   NAVBAR – Rosa elegante
-   ================================ */
+   BODY
+================================ */
+
+body {
+    background-color: var(--fondo-claro);
+    font-family: 'Inter', sans-serif;
+    color: var(--texto-oscuro);
+}
+
+/* ================================
+   NAVBAR PASTEL
+================================ */
 
 .navbar {
-    background-color: #e91e63 !important; /* rosa principal */
-    box-shadow: 0 2px 6px rgba(233, 30, 99, 0.25);
+    background-color: var(--rosa-suave) !important;
+    box-shadow: 0 2px 6px rgba(247, 178, 196, 0.35);
 }
 
 .navbar-brand,
 .nav-link {
     color: #fff !important;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .nav-link.active {
-    background-color: #f06292 !important; /* rosa más claro */
+    background-color: var(--rosa-clarito) !important;
+    color: #7a5967 !important;
     border-radius: 6px;
 }
 
-/* Iconos blancos */
-.nav-link i {
-    color: #fff;
+/* ================================
+   BOTÓN HAMBURGUESA
+================================ */
+
+.navbar-toggler {
+    border: 2px solid #ffffff88 !important;
+    border-radius: 10px;
 }
 
 /* ================================
-   CARDS
-   ================================ */
+   CARDS PASTEL
+================================ */
 
 .card {
-    border-radius: 1rem;
-    border: none;
     background: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border-radius: 1rem;
+    border: 1px solid var(--rosa-borde);
+    box-shadow: 0 4px 12px var(--card-shadow);
 }
 
 .card-header {
     background: #fff;
-    border-bottom: 2px solid #f8c1d9; /* línea rosada */
+    border-bottom: 2px solid var(--rosa-borde);
 }
 
 /* ================================
-   BUTTONS
-   ================================ */
-
-.btn-primary {
-    background-color: #e91e63;
-    border-color: #e91e63;
-}
-.btn-primary:hover {
-    background-color: #d81b60;
-    border-color: #d81b60;
-}
-
-.btn-outline-primary {
-    color: #e91e63;
-    border-color: #e91e63;
-}
-.btn-outline-primary:hover {
-    background-color: #e91e63;
-    color: #fff;
-}
-
-/* Botones de peligro en tonos rosados */
-.btn-danger {
-    background-color: #ff5370;
-    border-color: #ff5370;
-}
-.btn-danger:hover {
-    background-color: #e64563;
-    border-color: #e64563;
-}
-
-/* ================================
-   BADGES
-   ================================ */
-
-.badge.bg-success {
-    background-color: #43a047 !important;
-}
-.badge.bg-danger {
-    background-color: #e53935 !important;
-}
-.badge.bg-warning {
-    background-color: #fbc02d !important;
-    color: #fff;
-}
-
-/* ================================
-   AUTOCOMPLETE (buscadores)
-   ================================ */
-
-.autocomplete-results {
-    position: absolute;
-    top: 100%;
-    width: 100%;
-    z-index: 100;
-    background: #fff;
-    border: 1px solid #f8c1d9;
-    border-radius: 10px;
-    max-height: 300px;
-    overflow-y: auto;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    display: none;
-}
-
-.autocomplete-item {
-    padding: 10px 15px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.autocomplete-item:hover {
-    background: #fce4ec; /* rosado super suave */
-}
-
-/* ================================
-   TABLAS
-   ================================ */
-
-.table-hover tbody tr:hover {
-    background-color: #fde5ef !important;
-}
+   TABLAS PASTEL
+================================ */
 
 .table thead {
-    background: #fde5ef;
+    background-color: var(--rosa-clarito);
+    color: #503844;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #fde9f1 !important;
 }
 
 /* ================================
    FORMULARIOS
-   ================================ */
+================================ */
 
-.form-control:focus {
-    border-color: #e91e63;
-    box-shadow: 0 0 0 0.2rem rgba(233, 30, 99, 0.25);
+.form-control {
+    border-radius: 10px;
+    border-color: var(--rosa-borde);
 }
 
-/* ===============================
-   Animación suave modo claro/oscuro
-   =============================== */
+.form-control:focus {
+    border-color: var(--rosa-suave);
+    box-shadow: 0 0 0 .20rem rgba(247,178,196,.45);
+}
+
+/* ================================
+   BOTONES PASTEL
+================================ */
+
+.btn-primary {
+    background-color: var(--rosa-medio);
+    border-color: var(--rosa-medio);
+}
+
+.btn-primary:hover {
+    background-color: var(--rosa-medio-hover);
+    border-color: var(--rosa-medio-hover);
+}
+
+.btn-outline-primary {
+    border-color: var(--rosa-medio);
+    color: var(--rosa-medio);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--rosa-medio);
+    color: #fff;
+}
+
+/* ================================
+   BADGES
+================================ */
+
+.badge.bg-success { background-color: #7bc47f !important; }
+.badge.bg-danger { background-color: #ff7b96 !important; }
+.badge.bg-warning { background-color: #f8bb5c !important; color: #fff; }
+
+/* ================================
+   AUTOCOMPLETE
+================================ */
+
+.autocomplete-results {
+    background: #fff;
+    border: 1px solid var(--rosa-borde);
+    border-radius: 10px;
+    box-shadow: 0 6px 12px rgba(0,0,0,.1);
+}
+
+.autocomplete-item:hover {
+    background-color: #fdeaf2;
+}
+
+/* ================================
+   MODO OSCURO — animación suave
+================================ */
 
 body,
 .navbar,
 .card,
 .table,
-footer,
-.form-control {
-    transition: 
-        background-color 0.35s ease,
-        color 0.35s ease,
-        border-color 0.35s ease,
-        box-shadow 0.35s ease;
-}
-
-/* Animación autocomplete */
-.autocomplete-results,
-.autocomplete-item {
+.form-control,
+footer {
     transition:
-        background-color 0.25s ease,
-        color 0.25s ease;
+        background-color .3s ease,
+        color .3s ease,
+        border-color .3s ease,
+        box-shadow .3s ease;
 }
