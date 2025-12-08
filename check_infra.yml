@@ -1,44 +1,85 @@
 ---
-- name: Verificación completa de la infraestructura
-  hosts: localhost
-  connection: local
+- name: Verificación de Infraestructura Completa
+  hosts: all
+  become: yes
+  gather_facts: no
 
   tasks:
 
     # ========================
-    # REPLICACIÓN MYSQL
+    # 1. Comprobar Apache en frontends
     # ========================
-    - name: 🔍 Comprobar replicación en backend2
-      block:
-        - include_tasks: playbooks/checks/check_replication_tasks.yml
-      delegate_to: "{{ groups.backend[1] }}"
+    - name: Comprobar Apache en los frontends
+      ansible.builtin.systemd:
+        name: apache2
+        state: started
+      when: inventory_hostname in groups['frontend']
+      register: apache_status
+
+    - name: Mostrar estado de Apache
+      debug:
+        msg: "Apache está funcionando en {{ inventory_hostname }}"
+      when: apache_status is defined and apache_status.status is defined
+
 
     # ========================
-    # APACHE EN FRONTENDS
+    # 2. Comprobar MySQL en backends
     # ========================
-    - name: 🔍 Comprobar Apache en todos los frontends
-      block:
-        - include_tasks: playbooks/checks/check_apache_tasks.yml
-      loop: "{{ groups.frontend }}"
-      loop_control:
-        loop_var: target
-      delegate_to: "{{ target }}"
+    - name: Comprobar MySQL en los backends
+      ansible.builtin.systemd:
+        name: mysql
+        state: started
+      when: inventory_hostname in groups['backend']
+      register: mysql_status
+
+    - name: Mostrar estado MySQL
+      debug:
+        msg: "MySQL está funcionando en {{ inventory_hostname }}"
+      when: mysql_status is defined and mysql_status.status is defined
+
 
     # ========================
-    # NGINX EN BALANCEADOR
+    # 3. Comprobar NFS Server
     # ========================
-    - name: 🔍 Comprobar Nginx en el balanceador
-      block:
-        - include_tasks: playbooks/checks/check_nginx_tasks.yml
-      delegate_to: "{{ groups.lb[0] }}"
+    - name: Comprobar servicio NFS en servidor
+      ansible.builtin.systemd:
+        name: nfs-kernel-server
+        state: started
+      when: inventory_hostname in groups['nfs']
+      register: nfs_status
+
+    - name: Mostrar estado NFS
+      debug:
+        msg: "NFS operativo en {{ inventory_hostname }}"
+      when: nfs_status is defined and nfs_status.status is defined
+
 
     # ========================
-    # NFS EN FRONTENDS
+    # 4. Comprobar NFS Client (mount)
     # ========================
-    - name: 🔍 Comprobar NFS en los frontends
-      block:
-        - include_tasks: playbooks/checks/check_nfs_tasks.yml
-      loop: "{{ groups.frontend }}"
-      loop_control:
-        loop_var: target
-      delegate_to: "{{ target }}"
+    - name: Verificar montaje NFS en frontends
+      shell: "mount | grep '/var/www/html/media'"
+      when: inventory_hostname in groups['frontend']
+      register: nfs_mount
+      failed_when: nfs_mount.rc != 0
+
+    - name: Mostrar resultado NFS Client
+      debug:
+        var: nfs_mount.stdout
+      when: nfs_mount.stdout is defined
+
+
+    # ========================
+    # 5. Comprobar Balanceador NGINX
+    # ========================
+    - name: Comprobar servicio Nginx en load balancer
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+      when: inventory_hostname in groups['lb']
+      register: nginx_status
+
+    - name: Mostrar estado Nginx
+      debug:
+        msg: "Nginx funcionando correctamente en {{ inventory_hostname }}"
+      when: nginx_status is defined and nginx_status.status is defined

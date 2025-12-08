@@ -1,0 +1,113 @@
+<?php
+require_once 'config.php';
+require_once 'auth.php';
+
+require_login();
+require_role(['admin']);
+
+$pageTitle = "Dashboard Analítico";
+include 'header.php';
+
+function load_csv($filename) {
+    $path = __DIR__ . "/analisis/output/" . $filename;
+    if (!file_exists($path)) return [];
+    $csv = array_map('str_getcsv', file($path));
+    $header = array_shift($csv);
+    return array_map(fn($r) => array_combine($header, $r), $csv);
+}
+
+$productividad = load_csv("productividad.csv");
+$stock = load_csv("stock_bajo.csv");
+$tratamientos = load_csv("tratamientos_rentables.csv");
+?>
+
+<link rel="stylesheet" href="assets/dashboard.css">
+
+<h3 class="section-title">
+  <i class="bi bi-bar-chart"></i>
+  Dashboard Analítico (Python + CSV)
+</h3>
+
+<div class="container-fluid">
+
+  <div class="row">
+
+    <div class="col-md-6 mb-4">
+      <div class="chart-card">
+        <h5 class="mb-3">Productividad del Personal</h5>
+        <canvas id="grafProductividad"></canvas>
+      </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+      <div class="chart-card">
+        <h5 class="mb-3">Tratamientos Más Rentables</h5>
+        <canvas id="grafTratamientos"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row">
+
+    <div class="col-md-6 mb-4">
+      <div class="chart-card">
+        <h5 class="mb-3">Stock Crítico</h5>
+        <canvas id="grafStock"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const productividadLabels = <?= json_encode(array_column($productividad, 'empleado')) ?>;
+const productividadData = <?= json_encode(array_column($productividad, 'citas_realizadas')) ?>;
+
+new Chart(document.getElementById('grafProductividad'), {
+    type: 'bar',
+    data: {
+        labels: productividadLabels,
+        datasets: [{
+            label: 'Citas realizadas',
+            data: productividadData,
+            backgroundColor: 'rgba(0,123,255,0.7)'
+        }]
+    }
+});
+
+const tratLabels = <?= json_encode(array_column($tratamientos, 'tratamiento')) ?>;
+const tratData = <?= json_encode(array_column($tratamientos, 'rentabilidad')) ?>;
+
+new Chart(document.getElementById('grafTratamientos'), {
+    type: 'bar',
+    data: {
+        labels: tratLabels,
+        datasets: [{
+            label: 'Rentabilidad (€)',
+            data: tratData,
+            backgroundColor: 'orange'
+        }]
+    }
+});
+
+const stockLabels = <?= json_encode(array_column($stock, 'nombre')) ?>;
+const stockData = <?= json_encode(array_column($stock, 'stock_actual')) ?>;
+
+new Chart(document.getElementById('grafStock'), {
+    type: 'bar',
+    data: {
+        labels: stockLabels,
+        datasets: [{
+            label: 'Stock',
+            data: stockData,
+            backgroundColor: 'red'
+        }]
+    }
+});
+</script>
+
+<?php include 'footer.php'; ?>

@@ -1,163 +1,113 @@
-/* ================================
-   PALETA PASTEL SUAVE — CLÍNICA ESTÉTICA
-================================ */
-
-:root {
-    --rosa-suave: #f7b2c4;
-    --rosa-clarito: #fdd6e2;
-    --rosa-medio: #e59bbd;
-    --rosa-medio-hover: #d889ac;
-    --rosa-borde: #f4c8d7;
-
-    --texto-oscuro: #4a4445;
-    --fondo-claro: #fdf8fa;
-
-    --card-shadow: rgba(0, 0, 0, 0.06);
-}
-
-/* ================================
-   BODY
-================================ */
+/* ============================
+   MODO CLARO – Rosa pastel profesional
+   ============================ */
 
 body {
-    background-color: var(--fondo-claro);
-    font-family: 'Inter', sans-serif;
-    color: var(--texto-oscuro);
+    background-color: #faf4f7;
+    color: #4e3f46;
+    font-family: "Inter", sans-serif;
 }
 
-/* ================================
-   NAVBAR PASTEL
-================================ */
-
+/* Navbar */
 .navbar {
-    background-color: var(--rosa-suave) !important;
-    box-shadow: 0 2px 6px rgba(247, 178, 196, 0.35);
+    background-color: #d97a9a !important;
+    color: white;
 }
 
-.navbar-brand,
 .nav-link {
-    color: #fff !important;
-    font-weight: 600;
+    color: white !important;
+    font-weight: 500;
+}
+.nav-link:hover {
+    color: #ffe2ef !important;
 }
 
-.nav-link.active {
-    background-color: var(--rosa-clarito) !important;
-    color: #7a5967 !important;
-    border-radius: 6px;
-}
-
-/* ================================
-   BOTÓN HAMBURGUESA
-================================ */
-
-.navbar-toggler {
-    border: 2px solid #ffffff88 !important;
-    border-radius: 10px;
-}
-
-/* ================================
-   CARDS PASTEL
-================================ */
-
+/* Cards */
 .card {
-    background: #fff;
-    border-radius: 1rem;
-    border: 1px solid var(--rosa-borde);
-    box-shadow: 0 4px 12px var(--card-shadow);
-}
-
-.card-header {
-    background: #fff;
-    border-bottom: 2px solid var(--rosa-borde);
-}
-
-/* ================================
-   TABLAS PASTEL
-================================ */
-
-.table thead {
-    background-color: var(--rosa-clarito);
-    color: #503844;
-}
-
-.table-hover tbody tr:hover {
-    background-color: #fde9f1 !important;
-}
-
-/* ================================
-   FORMULARIOS
-================================ */
-
-.form-control {
+    background-color: #ffffff;
     border-radius: 10px;
-    border-color: var(--rosa-borde);
+    border: 1px solid #f1d8e3;
+    box-shadow: 0px 2px 6px rgba(150, 105, 125, 0.08);
 }
 
-.form-control:focus {
-    border-color: var(--rosa-suave);
-    box-shadow: 0 0 0 .20rem rgba(247,178,196,.45);
+/* Card header */
+.card-header {
+    background-color: #f9ecf1;
+    border-bottom: 1px solid #eed2df;
+    font-weight: 600;
+    font-size: 15px;
 }
 
-/* ================================
-   BOTONES PASTEL
-================================ */
-
+/* Buttons */
 .btn-primary {
-    background-color: var(--rosa-medio);
-    border-color: var(--rosa-medio);
+    background-color: #d46a8c;
+    border-color: #d46a8c;
 }
-
 .btn-primary:hover {
-    background-color: var(--rosa-medio-hover);
-    border-color: var(--rosa-medio-hover);
+    background-color: #c55b80;
+    border-color: #c55b80;
 }
 
 .btn-outline-primary {
-    border-color: var(--rosa-medio);
-    color: var(--rosa-medio);
+    color: #d46a8c;
+    border-color: #d46a8c;
 }
-
 .btn-outline-primary:hover {
-    background-color: var(--rosa-medio);
-    color: #fff;
+    background-color: #d46a8c;
+    color: white;
 }
 
-/* ================================
-   BADGES
-================================ */
+/* Inputs */
+.form-control {
+    border-radius: 7px;
+    border: 1px solid #e3c1cf;
+}
+.form-control:focus {
+    border-color: #c36a8d;
+    box-shadow: 0 0 0 0.25rem rgba(195, 106, 141, 0.25);
+}
 
-.badge.bg-success { background-color: #7bc47f !important; }
-.badge.bg-danger { background-color: #ff7b96 !important; }
-.badge.bg-warning { background-color: #f8bb5c !important; color: #fff; }
+/* Tablas */
+table {
+    background-color: white;
+}
+thead {
+    background-color: #f3dde7;
+    color: #4e3f46;
+    font-weight: 600;
+}
+.table tbody tr:hover {
+    background-color: #f7e5ed;
+}
 
-/* ================================
-   AUTOCOMPLETE
-================================ */
-
+/* Autocomplete */
 .autocomplete-results {
-    background: #fff;
-    border: 1px solid var(--rosa-borde);
-    border-radius: 10px;
-    box-shadow: 0 6px 12px rgba(0,0,0,.1);
+    position: absolute;
+    z-index: 999;
+    background: white;
+    width: 100%;
+    border: 1px solid #e3c1cf;
+    border-radius: 4px;
+    max-height: 260px;
+    overflow-y: auto;
 }
 
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
 .autocomplete-item:hover {
-    background-color: #fdeaf2;
+    background-color: #f7e5ed;
 }
 
-/* ================================
-   MODO OSCURO — animación suave
-================================ */
+/* Alerts */
+.alert {
+    border-radius: 10px;
+}
 
-body,
-.navbar,
-.card,
-.table,
-.form-control,
+/* Footer */
 footer {
-    transition:
-        background-color .3s ease,
-        color .3s ease,
-        border-color .3s ease,
-        box-shadow .3s ease;
+    padding: 20px 0;
+    text-align: center;
+    color: #8f7c86;
 }

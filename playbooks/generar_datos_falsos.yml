@@ -1,0 +1,19 @@
+---
+- name: Insertar dataset demo completo sin borrar BD
+  hosts: backend1
+  become: yes
+
+  vars_files:
+    - ../vars/variables.yml
+
+  tasks:
+
+    - name: Copiar demo_data.sql
+      copy:
+        src: ../sql/demo_data.sql
+        dest: /tmp/demo_data.sql
+        mode: '0644'
+
+    - name: Ejecutar demo_data.sql
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" clinica_db < /tmp/demo_data.sql

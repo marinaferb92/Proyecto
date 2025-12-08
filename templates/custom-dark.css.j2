@@ -1,69 +1,134 @@
-/* ============================
-   MODO OSCURO PASTEL SUAVE
-   ============================ */
+/* =========================================
+   MODO OSCURO – Rosa/Malva elegante profesional
+   Archivo: custom-dark.css.j2
+   ========================================= */
 
 body.dark-mode {
-    background-color: #f4e9ef; /* rosita pastel muy suave */
-    color: #5a4a4f;
+    background-color: #1c181d; /* gris muy oscuro con tono vino */
+    color: #eadce6;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Navbar */
+/* =========================
+   NAVBAR
+========================= */
 .dark-mode .navbar {
-    background-color: #d46a8c !important;
+    background-color: #5a2b47 !important; /* morado vino elegante */
+    border-bottom: 1px solid #7c4d63;
+}
+
+.dark-mode .nav-link {
+    color: #f0e6eb !important;
+}
+
+.dark-mode .nav-link:hover {
+    color: #ffb6d6 !important;
+}
+
+/* =========================
+   CARDS
+========================= */
+.dark-mode .card {
+    background-color: #272228;  
+    border-color: #3a3037;
+    color: #eadce6;
+    box-shadow: none;
+}
+
+.dark-mode .card-header {
+    background-color: #332c33;
+    border-bottom: 1px solid #4e434c;
+    color: #f2dce8;
+}
+
+/* =========================
+   TABLAS
+========================= */
+
+.dark-mode table {
+    background-color: #272228;
+    color: #eadce6;
+}
+
+.dark-mode thead {
+    background-color: #3a3037 !important;
+    color: #f2dce8 !important;
+}
+
+.dark-mode .table tbody tr:hover {
+    background-color: #453a41 !important;
+}
+
+/* =========================
+   FORMULARIOS
+========================= */
+
+.dark-mode .form-control {
+    background-color: #2f2930;
+    border-color: #6e5b67;
+    color: #eadce6;
+}
+
+.dark-mode .form-control:focus {
+    border-color: #db7ba3;
+    box-shadow: 0 0 0 0.25rem rgba(219, 123, 163, 0.20);
+}
+
+/* =========================
+   BOTONES
+========================= */
+
+.dark-mode .btn-primary {
+    background-color: #cf4f7c;
+    border-color: #cf4f7c;
+}
+
+.dark-mode .btn-primary:hover {
+    background-color: #b9426a;
+    border-color: #b9426a;
+}
+
+.dark-mode .btn-outline-primary {
+    color: #d0678e;
+    border-color: #d0678e;
+}
+
+.dark-mode .btn-outline-primary:hover {
+    background-color: #d0678e;
     color: white;
 }
 
-/* Cards */
-.dark-mode .card {
-    background-color: #f7edf2;
-    border-color: #e0c7d3;
-    color: #5a4a4f;
-}
+/* =========================
+   AUTOCOMPLETE
+========================= */
 
-/* Headers */
-.dark-mode .card-header {
-    background-color: #f0e3e9;
-    border-bottom: 1px solid #e3c5d4;
-}
-
-/* Tablas */
-.dark-mode table {
-    color: #5a4a4f;
-    background-color: #f6ecf1;
-}
-.dark-mode .table tbody tr:hover {
-    background-color: #ebd7df !important;
-}
-.dark-mode thead {
-    background-color: #ead3dc !important;
-}
-
-/* Formularios */
-.dark-mode .form-control {
-    background-color: #f3e4eb;
-    color: #5a4a4f;
-    border-color: #d9b8c7;
-}
-.dark-mode .form-control:focus {
-    border-color: #c27d9c;
-    box-shadow: 0 0 0 0.2rem rgba(194, 125, 156, 0.25);
-}
-
-/* Botones */
-.dark-mode .btn-primary {
-    background-color: #d46a8c;
-    border-color: #d46a8c;
-}
-.dark-mode .btn-primary:hover {
-    background-color: #c55b80;
-    border-color: #c55b80;
-}
-
-/* Autocomplete */
 .dark-mode .autocomplete-results {
-    background-color: #f6ecf1;
-    border-color: #d9b8c7;
+    background-color: #272228;
+    border-color: #6e5b67;
 }
+
+.dark-mode .autocomplete-item {
+    color: #eadce6;
+}
+
 .dark-mode .autocomplete-item:hover {
-    background-color: #ead3dc;
+    background-color: #453a41;
+}
+
+/* =========================
+   ALERTAS
+========================= */
+
+.dark-mode .alert {
+    background-color: #392631;
+    border-color: #5c3a4b;
+    color: #f5d8e6;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+.dark-mode footer {
+    color: #bba7b2;
 }

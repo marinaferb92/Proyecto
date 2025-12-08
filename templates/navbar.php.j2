@@ -23,7 +23,15 @@
 
             </ul>
 
-            <ul class="navbar-nav">
+            <ul class="navbar-nav align-items-center">
+
+                <!-- SWITCH DARK MODE -->
+                <li class="nav-item me-3">
+                    <button id="toggle-dark" class="btn btn-sm btn-outline-light">
+                        <i id="dark-icon" class="bi bi-moon-fill"></i>
+                    </button>
+                </li>
+
                 <?php if (!empty($_SESSION['usuario_id'])): ?>
                     <li class="nav-item">
                         <span class="navbar-text me-2">

@@ -1,15 +1,64 @@
 ---
-- name: Configurar replicación MySQL Maestro → Réplica
+- name: Clonar BBDD y configurar replicación Maestro → Réplica automáticamente
   hosts: backend
   become: yes
-
   vars_files:
     - ../vars/variables.yml
 
   tasks:
 
 ############################################################
-# 1. Obtener estado del maestro SOLO en backend1 
+# 1. Solo backend1: generar dump fresco
+############################################################
+    - name: Crear dump de la base de datos en backend1
+      shell: |
+        mysqldump -u root -p"{{ db.root_password }}" --databases {{ db.name }} > /tmp/clinica_db_dump.sql
+      when: inventory_hostname == "backend1"
+
+############################################################
+# 2. Copiar dump desde backend1 → backend2
+############################################################
+    - name: Copiar dump desde backend1 a backend2
+      fetch:
+        src: /tmp/clinica_db_dump.sql
+        dest: /tmp/clinica_db_dump.sql
+        flat: yes
+      when: inventory_hostname == "backend1"
+
+    - name: Subir dump a backend2
+      copy:
+        src: /tmp/clinica_db_dump.sql
+        dest: /tmp/clinica_db_dump.sql
+      when: inventory_hostname == "backend2"
+
+############################################################
+# 3. Importar dump en backend2
+############################################################
+    - name: Detener replicación si existía antes
+      shell: mysql -u root -p"{{ db.root_password }}" -e "STOP REPLICA;"
+      ignore_errors: yes
+      when: inventory_hostname == "backend2"
+
+    - name: Resetear replicación en backend2
+      shell: mysql -u root -p"{{ db.root_password }}" -e "RESET REPLICA ALL;"
+      ignore_errors: yes
+      when: inventory_hostname == "backend2"
+
+    - name: Borrar base de datos vieja en backend2
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" -e "
+          DROP DATABASE IF EXISTS {{ db.name }};
+          CREATE DATABASE {{ db.name }};
+        "
+      when: inventory_hostname == "backend2"
+
+    - name: Importar dump en backend2
+      shell: |
+        mysql -u root -p"{{ db.root_password }}" {{ db.name }} < /tmp/clinica_db_dump.sql
+      when: inventory_hostname == "backend2"
+
+############################################################
+# 4. Obtener estado del maestro (binlog + pos)
 ############################################################
     - name: Obtener estado del maestro (SHOW MASTER STATUS)
       shell: |
@@ -17,22 +66,20 @@
       register: master_status_raw
       when: inventory_hostname == "backend1"
 
-    - name: Extraer archivo de binlog (limpio)
+    - name: Extraer archivo de binlog
       set_fact:
         binlog_file: "{{ (master_status_raw.stdout | regex_findall('File: (.*)'))[0] }}"
       when: inventory_hostname == "backend1"
 
-    - name: Extraer posición del binlog (limpio)
+    - name: Extraer posición de binlog
       set_fact:
         binlog_pos: "{{ (master_status_raw.stdout | regex_findall('Position: (.*)'))[0] | int }}"
       when: inventory_hostname == "backend1"
 
-
-
 ############################################################
-# 2. Crear host virtual que comparta variables al grupo
+# 5. Exportar datos de replicación al grupo
 ############################################################
-    - name: Exportar binlog y posición a todos los hosts
+    - name: Compartir datos de replicación
       add_host:
         name: replication_info
         binlog_file: "{{ binlog_file }}"
@@ -40,19 +87,9 @@
       when: inventory_hostname == "backend1"
 
 ############################################################
-# 3. CONFIGURACIÓN DEL ESCLAVO (backend2)
+# 6. Configurar replicación en backend2
 ############################################################
-    - name: Parar replicación si existía antes
-      shell: mysql -u root -p"{{ db.root_password }}" -e "STOP REPLICA;"
-      ignore_errors: true
-      when: inventory_hostname == "backend2"
-
-    - name: Resetear replicación
-      shell: mysql -u root -p"{{ db.root_password }}" -e "RESET REPLICA ALL;"
-      ignore_errors: true
-      when: inventory_hostname == "backend2"
-
-    - name: Aplicar CHANGE REPLICATION SOURCE TO
+    - name: Configurar CHANGE REPLICATION SOURCE TO en backend2
       shell: |
         mysql -u root -p"{{ db.root_password }}" -e "
           CHANGE REPLICATION SOURCE TO
@@ -64,6 +101,18 @@
         "
       when: inventory_hostname == "backend2"
 
-    - name: Iniciar replicación en backend2
+    - name: Iniciar replicación
       shell: mysql -u root -p"{{ db.root_password }}" -e "START REPLICA;"
+      when: inventory_hostname == "backend2"
+
+############################################################
+# 7. Verificar replicación
+############################################################
+    - name: Comprobar estado de réplica
+      shell: mysql -u root -p"{{ db.root_password }}" -e "SHOW REPLICA STATUS\G"
+      register: replica_status
+      when: inventory_hostname == "backend2"
+
+    - debug:
+        var: replica_status.stdout
       when: inventory_hostname == "backend2"

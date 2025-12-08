@@ -1,63 +1,73 @@
 ---
-- name: Configurar análisis automático en backend
+- name: Configuración completa del módulo de análisis de datos
   hosts: backend1
   become: yes
 
   vars:
-    analisis_dir: /home/ubuntu/analisis_clinica
+    analisis_dir: /home/ubuntu/clinica_project/analisis
+    python_packages:
+      - pandas
+      - numpy
+      - matplotlib
+      - mysql-connector-python
+      - scikit-learn
+      - seaborn
 
   tasks:
 
-    - name: Instalar dependencias Python
+    # ===========================================
+    # 1. Instalar pip y dependencias del sistema
+    # ===========================================
+    - name: Instalar pip
       apt:
-        name:
-          - python3
-          - python3-pip
+        name: python3-pip
         state: present
         update_cache: yes
 
-    - name: Instalar librerías necesarias
+    - name: Instalar librerías Python necesarias
       pip:
-        name:
-          - mysql-connector-python
-          - pandas
-          - matplotlib
-          - scikit-learn
+        name: "{{ python_packages }}"
+        state: present
+        executable: pip3
 
-    - name: Crear directorio de análisis
-      file:
-        path: "{{ analisis_dir }}"
+    # ===========================================
+    # 2. Crear carpeta output para los resultados
+    # ===========================================
+    - name: Crear carpeta output para analíticas
+      ansible.builtin.file:
+        path: "{{ analisis_dir }}/output"
         state: directory
         owner: ubuntu
         group: ubuntu
-        mode: "0755"
+        mode: '0755'
 
-    - name: Copiar scripts de análisis
-      copy:
-        src: "../analisis_clinica/"
-        dest: "{{ analisis_dir }}/"
-        owner: ubuntu
-        group: ubuntu
-        mode: "0755"
-
-    - name: Crear script wrapper
-      copy:
-        dest: "{{ analisis_dir }}/run_analisis.sh"
-        owner: ubuntu
-        group: ubuntu
-        mode: "0755"
-        content: |
-          #!/bin/bash
-          cd {{ analisis_dir }}
-          python3 analisis_rfm.py
-          python3 stock_analisis.py
-          python3 tratamientos_rentables.py
-          python3 productividad_empleados.py
-
-    - name: Añadir cron job diario 03:00
+    # ===========================================
+    # 3. Configurar cron para ejecutar análisis diarios
+    # ===========================================
+    - name: Crear cronjob para análisis RFM
       cron:
-        name: "Analisis clinica diario"
+        name: "analisis_rfm"
         user: ubuntu
+        job: "/usr/bin/python3 {{ analisis_dir }}/analisis_rfm.py"
         minute: "0"
         hour: "3"
-        job: "{{ analisis_dir }}/run_analisis.sh >> {{ analisis_dir }}/analisis.log 2>&1"
+
+    - name: Crear cronjob para análisis de stock
+      cron:
+        name: "analisis_stock"
+        user: ubuntu
+        job: "/usr/bin/python3 {{ analisis_dir }}/stock_analisis.py"
+        minute: "5"
+        hour: "3"
+
+    - name: Crear cronjob para análisis productividad empleados
+      cron:
+        name: "analisis_productividad"
+        user: ubuntu
+        job: "/usr/bin/python3 {{ analisis_dir }}/productividad_empleados.py"
+        minute: "10"
+        hour: "3"
+
+    - name: Mensaje final
+      debug:
+        msg: "Módulo de análisis instalado correctamente. Cronjobs programados."

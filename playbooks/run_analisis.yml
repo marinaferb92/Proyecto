@@ -1,0 +1,52 @@
+---
+- name: Ejecutar todos los análisis de datos de la clínica
+  hosts: backend1
+  become: yes
+
+  vars:
+    analisis_dir: /home/ubuntu/clinica_project/analisis
+
+  tasks:
+
+    - name: Ejecutar análisis RFM
+      command: python3 {{ analisis_dir }}/analisis_rfm.py
+      register: rfm_output
+    - debug: var=rfm_output.stdout_lines
+
+    - name: Ejecutar análisis de stock
+      command: python3 {{ analisis_dir }}/stock_analisis.py
+      register: stock_output
+    - debug: var=stock_output.stdout_lines
+
+    - name: Ejecutar análisis de productividad de empleados
+      command: python3 {{ analisis_dir }}/productividad_empleados.py
+      register: prod_output
+    - debug: var=prod_output.stdout_lines
+
+    - name: Ejecutar análisis de tratamientos rentables
+      command: python3 {{ analisis_dir }}/tratamientos_rentables.py
+      register: rent_output
+    - debug: var=rent_output.stdout_lines
+
+    - name: Ejecutar análisis de campañas de marketing
+      command: python3 {{ analisis_dir }}/campañas_efectividad.py
+      register: camp_output
+    - debug: var=camp_output.stdout_lines
+
+    - name: Ejecutar análisis de abandono (churn)
+      command: python3 {{ analisis_dir }}/churn_clientes.py
+      register: churn_output
+    - debug: var=churn_output.stdout_lines
+
+    - name: Ejecutar clustering de clientes
+      command: python3 {{ analisis_dir }}/clustering_clientes.py
+      register: cluster_output
+    - debug: var=cluster_output.stdout_lines
+
+    - name: Generar informe PDF
+      command: python3 {{ analisis_dir }}/generar_informe.py
+      register: informe_output
+    - debug: var=informe_output.stdout_lines
+
+    - debug:
+        msg: "Todos los análisis se ejecutaron correctamente. Archivos generados en {{ analisis_dir }}/output/"
