@@ -1,0 +1,19 @@
+---
+- name: Comprobar Nginx funcionando
+  become: yes
+  command: systemctl is-active nginx
+  register: nginx_status
+  failed_when: false
+
+- name: Mostrar estado de Nginx
+  debug:
+    msg: "Estado Nginx: {{ nginx_status.stdout }}"
+
+- name: Error si no está activo
+  fail:
+    msg: "❌ Nginx caído en el balanceador"
+  when: nginx_status.stdout != "active"
+
+- name: OK
+  debug:
+    msg: "✅ Nginx funcionando correctamente"

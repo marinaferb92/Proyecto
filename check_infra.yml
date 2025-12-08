@@ -1,0 +1,44 @@
+---
+- name: Verificación completa de la infraestructura
+  hosts: localhost
+  connection: local
+
+  tasks:
+
+    # ========================
+    # REPLICACIÓN MYSQL
+    # ========================
+    - name: 🔍 Comprobar replicación en backend2
+      block:
+        - include_tasks: playbooks/checks/check_replication_tasks.yml
+      delegate_to: "{{ groups.backend[1] }}"
+
+    # ========================
+    # APACHE EN FRONTENDS
+    # ========================
+    - name: 🔍 Comprobar Apache en todos los frontends
+      block:
+        - include_tasks: playbooks/checks/check_apache_tasks.yml
+      loop: "{{ groups.frontend }}"
+      loop_control:
+        loop_var: target
+      delegate_to: "{{ target }}"
+
+    # ========================
+    # NGINX EN BALANCEADOR
+    # ========================
+    - name: 🔍 Comprobar Nginx en el balanceador
+      block:
+        - include_tasks: playbooks/checks/check_nginx_tasks.yml
+      delegate_to: "{{ groups.lb[0] }}"
+
+    # ========================
+    # NFS EN FRONTENDS
+    # ========================
+    - name: 🔍 Comprobar NFS en los frontends
+      block:
+        - include_tasks: playbooks/checks/check_nfs_tasks.yml
+      loop: "{{ groups.frontend }}"
+      loop_control:
+        loop_var: target
+      delegate_to: "{{ target }}"

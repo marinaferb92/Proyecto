@@ -1,0 +1,20 @@
+---
+- name: Obtener estado de la replicación MySQL
+  command: mysql -u{{ db.replication_user }} -p{{ db.replication_pass }} -e "SHOW SLAVE STATUS\G"
+  register: replication_status
+  failed_when: false
+
+- name: Mostrar estado de replicación
+  debug:
+    var: replication_status.stdout
+
+- name: Validar que SQL y IO estén corriendo
+  fail:
+    msg: "❌ La replicación MySQL NO está sincronizada"
+  when:
+    - "'Slave_IO_Running: Yes' not in replication_status.stdout"
+    - "'Slave_SQL_Running: Yes' not in replication_status.stdout"
+
+- name: Confirmación
+  debug:
+    msg: "✅ Replicación correcta en backend2"

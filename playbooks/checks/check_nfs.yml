@@ -1,0 +1,18 @@
+---
+- name: Comprobar si el directorio NFS está montado
+  command: mount | grep "/var/www/html"
+  register: nfs_mounted
+  failed_when: false
+
+- name: Mostrar estado del montaje
+  debug:
+    var: nfs_mounted.stdout
+
+- name: Falla si el directorio NFS no está montado
+  fail:
+    msg: "❌ NFS no está montado en este frontend"
+  when: nfs_mounted.stdout == ""
+
+- name: OK
+  debug:
+    msg: "✅ NFS montado correctamente"

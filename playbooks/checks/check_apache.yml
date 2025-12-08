@@ -1,0 +1,19 @@
+---
+- name: Comprobar Apache funcionando
+  become: yes
+  command: systemctl is-active apache2
+  register: apache_status
+  failed_when: false
+
+- name: Mostrar estado de Apache
+  debug:
+    msg: "Estado Apache: {{ apache_status.stdout }}"
+
+- name: Falla si Apache NO está activo
+  fail:
+    msg: "❌ Apache caído en frontend"
+  when: apache_status.stdout != "active"
+
+- name: OK
+  debug:
+    msg: "✅ Apache está funcionando correctamente"
