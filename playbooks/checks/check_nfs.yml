@@ -13,9 +13,9 @@
 
 - name: Falla si el directorio NFS no está montado
   fail:
-    msg: "❌ NFS no está montado en este frontend"
+    msg: "NFS no está montado en este frontend"
   when: nfs_mounted.stdout == ""
 
 - name: OK
   debug:
-    msg: "✅ NFS montado correctamente"
+    msg: "NFS montado correctamente"

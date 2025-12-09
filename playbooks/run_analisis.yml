@@ -1,52 +1,108 @@
 ---
-- name: Ejecutar todos los análisis de datos de la clínica
+- name: Ejecutar análisis completos + cron + sincronizar scripts
   hosts: backend1
   become: yes
 
   vars:
-    analisis_dir: /home/ubuntu/clinica_project/analisis
+    analisis_src: "{{ playbook_dir }}/../analisis"   # ruta local
+    analisis_dst: "/opt/clinica/analisis"            # ruta en servidor
+    venv_path: "/opt/clinica/analisis/venv"
 
   tasks:
 
+    # ======================================================
+    # 1. Crear carpeta análisis en /opt/clinica si no existe
+    # ======================================================
+    - name: Crear carpeta /opt/clinica/analisis
+      file:
+        path: "{{ analisis_dst }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # ======================================================
+    # 2. Copiar TODOS LOS SCRIPTS desde tu PC al servidor
+    # ======================================================
+    - name: Sincronizar scripts de análisis desde la control machine
+      synchronize:
+        src: "{{ analisis_src }}/"
+        dest: "{{ analisis_dst }}/"
+        recursive: yes
+        delete: no
+        owner: false
+        group: false
+        rsync_opts:
+          - "--chmod=755"
+
+    # ======================================================
+    # 3. Crear virtualenv si no existe
+    # ======================================================
+    - name: Comprobar si virtualenv existe
+      stat:
+        path: "{{ venv_path }}"
+      register: venv_check
+
+    - name: Crear virtualenv
+      command: python3 -m venv {{ venv_path }}
+      when: not venv_check.stat.exists
+
+    # ======================================================
+    # 4. Instalar dependencias
+    # ======================================================
+    - name: Instalar dependencias Python
+      pip:
+        requirements: "{{ analisis_dst }}/requirements.txt"
+        virtualenv: "{{ venv_path }}"
+        virtualenv_command: python3 -m venv
+
+    # ======================================================
+    # 5. Crear carpeta output
+    # ======================================================
+    - name: Crear carpeta output
+      file:
+        path: "{{ analisis_dst }}/output"
+        state: directory
+        mode: "0755"
+
+    # ======================================================
+    # 6. Ejecutar análisis
+    # ======================================================
     - name: Ejecutar análisis RFM
-      command: python3 {{ analisis_dir }}/analisis_rfm.py
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/analisis_rfm.py"
       register: rfm_output
+
     - debug: var=rfm_output.stdout_lines
 
-    - name: Ejecutar análisis de stock
-      command: python3 {{ analisis_dir }}/stock_analisis.py
-      register: stock_output
-    - debug: var=stock_output.stdout_lines
+    - name: Ejecutar productividad empleados
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/productividad_empleados.py"
 
-    - name: Ejecutar análisis de productividad de empleados
-      command: python3 {{ analisis_dir }}/productividad_empleados.py
-      register: prod_output
-    - debug: var=prod_output.stdout_lines
+    - name: Ejecutar stock análisis
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/stock_analisis.py"
 
-    - name: Ejecutar análisis de tratamientos rentables
-      command: python3 {{ analisis_dir }}/tratamientos_rentables.py
-      register: rent_output
-    - debug: var=rent_output.stdout_lines
+    - name: Ejecutar campañas
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/campañas_efectividad.py"
 
-    - name: Ejecutar análisis de campañas de marketing
-      command: python3 {{ analisis_dir }}/campañas_efectividad.py
-      register: camp_output
-    - debug: var=camp_output.stdout_lines
+    - name: Ejecutar análisis de abandono
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/churn_clientes.py"
 
-    - name: Ejecutar análisis de abandono (churn)
-      command: python3 {{ analisis_dir }}/churn_clientes.py
-      register: churn_output
-    - debug: var=churn_output.stdout_lines
+    - name: Ejecutar tratamientos rentables
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/tratamientos_rentables.py"
 
-    - name: Ejecutar clustering de clientes
-      command: python3 {{ analisis_dir }}/clustering_clientes.py
-      register: cluster_output
-    - debug: var=cluster_output.stdout_lines
+    - name: Ejecutar predicción citas
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/prediccion_citas.py"
 
-    - name: Generar informe PDF
-      command: python3 {{ analisis_dir }}/generar_informe.py
-      register: informe_output
-    - debug: var=informe_output.stdout_lines
+    - name: Ejecutar extracción general (extraer_datos.py)
+      command: "{{ venv_path }}/bin/python {{ analisis_dst }}/extraer_datos.py"
 
-    - debug:
-        msg: "Todos los análisis se ejecutaron correctamente. Archivos generados en {{ analisis_dir }}/output/"
+    # ======================================================
+    # 7. Programar cron diario
+    # ======================================================
+    - name: Crear cron para ejecutar análisis diario
+      cron:
+        name: "analisis_clinica_diario"
+        user: root
+        job: "{{ venv_path }}/bin/python {{ analisis_dst }}/generar_informe.py"
+        state: present
+        hour: 3
+        minute: 0

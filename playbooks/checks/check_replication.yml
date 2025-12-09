@@ -10,11 +10,11 @@
 
 - name: Validar que SQL y IO estén corriendo
   fail:
-    msg: "❌ La replicación MySQL NO está sincronizada"
+    msg: "La replicación MySQL NO está sincronizada"
   when:
     - "'Slave_IO_Running: Yes' not in replication_status.stdout"
     - "'Slave_SQL_Running: Yes' not in replication_status.stdout"
 
 - name: Confirmación
   debug:
-    msg: "✅ Replicación correcta en backend2"
+    msg: "Replicación correcta en backend2"

@@ -11,9 +11,9 @@
 
 - name: Error si no está activo
   fail:
-    msg: "❌ Nginx caído en el balanceador"
+    msg: "Nginx caído en el balanceador"
   when: nginx_status.stdout != "active"
 
 - name: OK
   debug:
-    msg: "✅ Nginx funcionando correctamente"
+    msg: "Nginx funcionando correctamente"

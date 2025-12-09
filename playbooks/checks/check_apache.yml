@@ -11,9 +11,9 @@
 
 - name: Falla si Apache NO está activo
   fail:
-    msg: "❌ Apache caído en frontend"
+    msg: "Apache caído en frontend"
   when: apache_status.stdout != "active"
 
 - name: OK
   debug:
-    msg: "✅ Apache está funcionando correctamente"
+    msg: "Apache está funcionando correctamente"
